@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend } from 'recharts';
+import { useState, useEffect } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid, Legend } from 'recharts';
 import Sidebar from './layout/Sidebar';
 import Navbar from './layout/Navbar';
 import DashboardCard from './components/DashboardCard';
@@ -19,8 +19,7 @@ import {
     Pencil,
     Trash2,
     CalendarDays,
-    Search,
-    LogOut
+    Search
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api/admin';
@@ -88,7 +87,7 @@ interface RequestData {
 }
 
 const App = () => {
-  const { admin, token, loading: authLoading, logout } = useAuth();
+  const { admin, token, loading: authLoading } = useAuth();
 
   if (authLoading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)' }}>
@@ -114,7 +113,7 @@ const App = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<{ id: string, type: any } | null>(null);
   const [activeTab, setActiveTab] = useState<'creation' | 'claim' | 'edit' | 'remove'>('creation');
-  const [currentView, setCurrentView] = useState<'dashboard' | 'events' | 'organizers' | 'venues' | 'queries' | 'past-events' | 'city-requests' | 'team' | 'settings'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'events' | 'organizers' | 'venues' | 'queries' | 'past-events' | 'city-requests' | 'analytics' | 'team' | 'settings'>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -223,7 +222,7 @@ const App = () => {
       fetchDashboardData();
     } else if (currentView === 'team') {
       fetchTeam();
-    } else if (currentView === 'analytics') {
+    } else if ((currentView as string) === 'analytics') {
       setLoading(true);
       authFetch(`${API_BASE}/analytics`).then(r => r.json()).then(d => setAnalyticsData(d)).finally(() => setLoading(false));
     } else {
@@ -1582,7 +1581,7 @@ const App = () => {
   };
 
   const renderMainContent = () => {
-    switch(currentView) {
+    switch(currentView as string) {
       case 'dashboard': return renderDashboard();
       case 'events': return renderEventsView();
       case 'organizers': return renderOrganizersView();
@@ -1602,7 +1601,7 @@ const App = () => {
   };
 
   const getHeaderInfo = () => {
-    switch(currentView) {
+    switch(currentView as string) {
       case 'dashboard': return { title: 'Dashboard Overview', desc: 'Live management portal for HappenBe.com' };
       case 'events': return { title: 'Events Management', desc: 'View and manage all approved events.' };
       case 'organizers': return { title: 'Organizers Directory', desc: 'List of all active event hosts.' };
