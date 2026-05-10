@@ -194,6 +194,98 @@ button {
   background: var(--text-muted);
 }
 
+/* ── Responsive helpers ─────────────────────── */
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-6);
+  border-bottom: 1px solid var(--border-color);
+  gap: 12px;
+}
+
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.search-box input {
+  padding: 10px 14px 10px 38px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  font-size: 0.875rem;
+  width: 260px;
+  outline: none;
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.search-box svg {
+  position: absolute;
+  left: 12px;
+  pointer-events: none;
+}
+
+@media (max-width: 767px) {
+  /* Compact stat cards only */
+  .stat-card {
+    padding: 14px !important;
+  }
+
+  /* Smaller stat number on mobile */
+  .stat-card span[style*="2rem"] {
+    font-size: 1.5rem !important;
+  }
+
+  /* List container cards — keep padding 0, remove hover lift */
+  .list-card {
+    padding: 0 !important;
+    border-radius: 12px !important;
+    transform: none !important;
+  }
+
+  .list-card:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Analytics KPI cards */
+  .stat-card {
+    border-radius: 12px !important;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .search-box {
+    width: 100%;
+  }
+
+  .search-box input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Compact table cells on mobile */
+  table td, table th {
+    padding: 10px 12px !important;
+    font-size: 0.8rem !important;
+  }
+
+  /* Hide lower-priority table columns on mobile */
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
 /* ── react-datepicker: admin light-theme ───────────────────── */
 .react-datepicker-wrapper,
 .react-datepicker__input-container {

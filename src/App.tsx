@@ -15,6 +15,7 @@ import {
     Check,
     X,
     ArrowRight,
+    RefreshCw,
     Plus,
     Pencil,
     Trash2,
@@ -115,7 +116,15 @@ const App = () => {
   const [activeTab, setActiveTab] = useState<'creation' | 'claim' | 'edit' | 'remove'>('creation');
   const [currentView, setCurrentView] = useState<'dashboard' | 'events' | 'organizers' | 'venues' | 'queries' | 'past-events' | 'city-requests' | 'analytics' | 'team' | 'settings'>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Data for additional views
   const [allEvents, setAllEvents] = useState<any[]>([]);
@@ -281,10 +290,10 @@ const App = () => {
   const renderDashboard = () => (
     <>
       <div style={{
-        display: 'flex',
-        gap: 'var(--spacing-6)',
-        flexWrap: 'wrap',
-        marginBottom: 'var(--spacing-8)'
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
+        gap: 'var(--spacing-4)',
+        marginBottom: 'var(--spacing-6)'
       }}>
         <DashboardCard
           title="Total Events"
@@ -322,17 +331,17 @@ const App = () => {
 
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 340px',
+        gridTemplateColumns: isMobile ? '1fr' : '1fr 340px',
         gap: 'var(--spacing-6)'
       }}>
         {/* Recent Requests Table */}
-        <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="glass-card list-card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{
-            padding: 'var(--spacing-6)',
+            padding: isMobile ? '16px' : 'var(--spacing-6)',
             borderBottom: '1px solid var(--border-color)',
             display: 'flex',
             flexDirection: 'column',
-            gap: 'var(--spacing-4)'
+            gap: '12px'
           }}>
             {/* Row 1: Title + Refresh */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -350,16 +359,17 @@ const App = () => {
                   opacity: refreshing ? 0.6 : 1, transition: '0.2s', paddingTop: '2px'
                 }}
               >
-                <ArrowRight size={15} style={{ animation: refreshing ? 'spin 1.5s linear infinite' : 'none' }} />
+                <RefreshCw size={15} style={{ animation: refreshing ? 'spin 1.5s linear infinite' : 'none' }} />
                 {refreshing ? 'Syncing...' : 'Refresh'}
               </button>
             </div>
 
             {/* Row 2: Tabs + Search */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{
                 display: 'flex', background: 'var(--bg-tertiary)',
-                padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)'
+                padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)',
+                width: '100%'
               }}>
                 {[
                   { id: 'creation', label: 'Events', icon: CalendarDays },
@@ -374,24 +384,26 @@ const App = () => {
                       key={tab.id}
                       onClick={() => { setActiveTab(tab.id as any); fetchDashboardData(true); }}
                       style={{
-                        padding: '6px 22px', borderRadius: '8px', fontSize: '0.8125rem', fontWeight: 600,
-                        display: 'flex', alignItems: 'center', gap: '6px', transition: '0.2s',
-                        position: 'relative',
+                        flex: 1, padding: isMobile ? '6px 4px' : '6px 16px',
+                        borderRadius: '8px', fontSize: isMobile ? '0.72rem' : '0.8125rem', fontWeight: 600,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        gap: isMobile ? '3px' : '6px', transition: '0.2s',
                         background: isActive ? 'var(--bg-secondary)' : 'transparent',
                         color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
                         border: isActive ? '1px solid var(--border-color)' : '1px solid transparent',
-                        cursor: 'pointer', boxShadow: isActive ? 'var(--shadow-sm)' : 'none'
+                        cursor: 'pointer', boxShadow: isActive ? 'var(--shadow-sm)' : 'none',
+                        whiteSpace: 'nowrap'
                       }}
                     >
-                      <tab.icon size={14} className={refreshing && isActive ? 'refresh-spinner' : ''} />
-                      {tab.label}
+                      <tab.icon size={13} className={refreshing && isActive ? 'refresh-spinner' : ''} />
+                      {isMobile ? tab.label.replace('Removals', 'Remove') : tab.label}
                       {count > 0 && (
                         <span style={{
-                          minWidth: '16px', height: '16px', borderRadius: '999px',
+                          minWidth: '15px', height: '15px', borderRadius: '999px',
                           background: isActive ? 'var(--accent-primary)' : 'rgba(239,68,68,0.85)',
-                          color: '#fff', fontSize: '0.6rem', fontWeight: 800,
+                          color: '#fff', fontSize: '0.58rem', fontWeight: 800,
                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          padding: '0 5px', lineHeight: 1
+                          padding: '0 4px', lineHeight: 1
                         }}>
                           {count}
                         </span>
@@ -401,18 +413,13 @@ const App = () => {
                 })}
               </div>
 
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <Search size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '12px' }} />
+              <div className="search-box" style={{ width: '100%' }}>
+                <Search size={15} color="var(--text-muted)" />
                 <input
                   type="text"
                   placeholder="Search requests..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  style={{
-                    padding: '8px 12px 8px 34px', borderRadius: '10px',
-                    border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)',
-                    fontSize: '0.85rem', width: '200px', outline: 'none', color: 'var(--text-primary)'
-                  }}
                 />
               </div>
             </div>
@@ -422,12 +429,12 @@ const App = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--bg-tertiary)', textAlign: 'left' }}>
-                  <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Event Name</th>
-                  <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Type</th>
-                  <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Organizer</th>
-                  <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Date</th>
-                  <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Status</th>
-                  <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Actions</th>
+                  <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Event</th>
+                  <th className="hide-mobile" style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Type</th>
+                  <th className="hide-mobile" style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Organizer</th>
+                  <th className="hide-mobile" style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Date</th>
+                  <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Status</th>
+                  <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -459,8 +466,8 @@ const App = () => {
                     onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-tertiary)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
-                    <td style={{ padding: '16px var(--spacing-6)', fontSize: '0.9rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '48px', height: '48px', minWidth: '48px', borderRadius: '8px', overflow: 'hidden', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
+                    <td style={{ padding: '12px 16px', fontSize: '0.875rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '40px', height: '40px', minWidth: '40px', borderRadius: '8px', overflow: 'hidden', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
                         <img 
                           src={request.image ? (request.image.startsWith('http') ? request.image : `${BACKEND_URL}${request.image.startsWith('/') ? '' : '/'}${request.image}`) : (request.type === 'claim' ? (request.logoUrl && typeof request.logoUrl === 'string' && request.logoUrl.startsWith('http') ? request.logoUrl : `${BACKEND_URL}${request.logoUrl || ''}`) : 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=100')} 
                           style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }} 
@@ -469,15 +476,15 @@ const App = () => {
                       </div>
                       {request.event || 'Unnamed Event'}
                     </td>
-                    <td style={{ padding: '16px var(--spacing-6)' }}>
+                    <td className="hide-mobile" style={{ padding: '12px 16px' }}>
                       <RequestTypeBadge type={request.type} />
                     </td>
-                    <td style={{ padding: '16px var(--spacing-6)', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{request.organizer}</td>
-                    <td style={{ padding: '16px var(--spacing-6)', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{new Date(request.date).toLocaleDateString()}</td>
-                    <td style={{ padding: '16px var(--spacing-6)' }}>
+                    <td className="hide-mobile" style={{ padding: '12px 16px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{request.organizer}</td>
+                    <td className="hide-mobile" style={{ padding: '12px 16px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{new Date(request.date).toLocaleDateString()}</td>
+                    <td style={{ padding: '12px 16px' }}>
                       <StatusBadge status={request.status} />
                     </td>
-                    <td style={{ padding: '16px var(--spacing-6)' }}>
+                    <td style={{ padding: '12px 16px' }}>
                       <div style={{ display: 'flex', gap: 'var(--spacing-2)' }}>
                         <button
                           onClick={(e) => {
@@ -559,171 +566,177 @@ const App = () => {
   );
 
   const renderEventsView = () => (
-    <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-      <div style={{ padding: 'var(--spacing-6)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="glass-card list-card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="section-header">
         <div>
-          <h3 style={{ fontSize: '1.25rem' }}>Full Events Directory</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Browse and manage all approved events on the platform.</p>
+          <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Full Events Directory</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '4px 0 0' }}>Browse and manage all approved events on the platform.</p>
         </div>
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <Search size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '16px' }} />
-          <input 
-            type="text" 
-            placeholder="Search events, cities, venues..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ 
-              padding: '12px 16px 12px 48px', 
-              borderRadius: '12px', 
-              border: '1px solid var(--border-color)', 
-              background: 'var(--bg-tertiary)',
-              fontSize: '0.9rem',
-              width: '320px',
-              outline: 'none',
-              color: 'var(--text-primary)',
-              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
-            }}
-          />
+        <div className="search-box">
+          <Search size={15} color="var(--text-muted)" />
+          <input type="text" placeholder="Search events..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
       </div>
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: 'var(--bg-tertiary)', textAlign: 'left' }}>
-              <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Event</th>
-              <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Organizer</th>
-              <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Category</th>
-              <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Location</th>
-              <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Status</th>
-              <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading events...</td></tr>
-            ) : allEvents.filter(e => 
-                (e.title?.toLowerCase().includes(searchTerm.toLowerCase())) || 
-                (e.city?.toLowerCase().includes(searchTerm.toLowerCase())) || 
-                (e.venue?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                (e.organizer?.organizerName?.toLowerCase().includes(searchTerm.toLowerCase()))
-              ).length === 0 ? (
-              <tr><td colSpan={6} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches found for your search.' : 'No events found.'}</td></tr>
-            ) : allEvents.filter(e => 
-                (e.title?.toLowerCase().includes(searchTerm.toLowerCase())) || 
-                (e.city?.toLowerCase().includes(searchTerm.toLowerCase())) || 
-                (e.venue?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                (e.organizer?.organizerName?.toLowerCase().includes(searchTerm.toLowerCase()))
-              ).map((event) => (
-              <tr 
-                key={event._id}
-                onClick={() => {
-                  setSelectedRequest({ id: event._id, type: 'creation' });
-                  setIsViewModalOpen(true);
-                }}
-                style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer', transition: '0.2s' }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-tertiary)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-              >
-                <td style={{ padding: '16px var(--spacing-6)', fontSize: '0.9rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '8px', overflow: 'hidden', background: 'var(--bg-tertiary)' }}>
-                    <img 
-                      src={event?.image?.startsWith('http') ? event.image : `${BACKEND_URL}${event?.image || '/placeholder.png'}`} 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                    />
-                  </div>
-                  {event?.title || 'Unnamed Event'}
-                </td>
-                <td style={{ padding: '16px var(--spacing-6)', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{event?.organizer?.organizerName || 'Unknown'}</td>
-                <td style={{ padding: '16px var(--spacing-6)' }}><span style={{ padding: '4px 10px', borderRadius: '20px', background: 'rgba(0,0,0,0.05)', fontSize: '0.75rem' }}>{event?.category || 'General'}</span></td>
-                <td style={{ padding: '16px var(--spacing-6)', fontSize: '0.85rem' }}>{event?.venue || 'No Venue'}, {event?.city || 'No City'}</td>
-                <td style={{ padding: '16px var(--spacing-6)' }}><StatusBadge status={event?.status || 'pending'} /></td>
-                <td style={{ padding: '16px var(--spacing-6)' }}>
-                  {event.status === 'pending' && (
-                    <div style={{ display: 'flex', gap: 'var(--spacing-2)', justifyContent: 'flex-end' }}>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAction(event._id, 'creation', 'approved');
-                        }}
-                        style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success)', border: 'none', cursor: 'pointer' }}
-                        title="Approve"
-                      >
-                        <Check size={16} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAction(event._id, 'creation', 'rejected');
-                        }}
-                        style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--error)', border: 'none', cursor: 'pointer' }}
-                        title="Reject"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  )}
-                </td>
+      {isMobile ? (
+        /* Mobile: card list */
+        <div>
+          {loading ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading events...</div>
+          ) : allEvents.filter(e =>
+              (e.title?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+              (e.city?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+              (e.organizer?.organizerName?.toLowerCase().includes(searchTerm.toLowerCase()))
+            ).length === 0 ? (
+            <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              {searchTerm ? 'No matches found.' : 'No events found.'}
+            </div>
+          ) : allEvents.filter(e =>
+              (e.title?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+              (e.city?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+              (e.organizer?.organizerName?.toLowerCase().includes(searchTerm.toLowerCase()))
+            ).map((event) => (
+            <div
+              key={event._id}
+              onClick={() => { setSelectedRequest({ id: event._id, type: 'creation' }); setIsViewModalOpen(true); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', transition: 'background 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-tertiary)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              <div style={{ width: '38px', height: '38px', minWidth: '38px', borderRadius: '8px', overflow: 'hidden', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', flexShrink: 0 }}>
+                <img src={event?.image?.startsWith('http') ? event.image : `${BACKEND_URL}${event?.image || '/placeholder.png'}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event?.title || 'Unnamed Event'}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                  {event?.organizer?.organizerName || 'Unknown'}{event?.city ? ` · ${event.city}` : ''}
+                </div>
+              </div>
+              <div style={{ flexShrink: 0 }}>
+                <StatusBadge status={event?.status || 'pending'} />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        /* Desktop: table */
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'var(--bg-tertiary)', textAlign: 'left' }}>
+                <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Event</th>
+                <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Organizer</th>
+                <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Category</th>
+                <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Location</th>
+                <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Status</th>
+                <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading events...</td></tr>
+              ) : allEvents.filter(e =>
+                  (e.title?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                  (e.city?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                  (e.venue?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                  (e.organizer?.organizerName?.toLowerCase().includes(searchTerm.toLowerCase()))
+                ).length === 0 ? (
+                <tr><td colSpan={6} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches found.' : 'No events found.'}</td></tr>
+              ) : allEvents.filter(e =>
+                  (e.title?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                  (e.city?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                  (e.venue?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                  (e.organizer?.organizerName?.toLowerCase().includes(searchTerm.toLowerCase()))
+                ).map((event) => (
+                <tr
+                  key={event._id}
+                  onClick={() => { setSelectedRequest({ id: event._id, type: 'creation' }); setIsViewModalOpen(true); }}
+                  style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer', transition: '0.2s' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-tertiary)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <td style={{ padding: '14px 20px', fontSize: '0.9rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '40px', height: '40px', minWidth: '40px', borderRadius: '8px', overflow: 'hidden', background: 'var(--bg-tertiary)' }}>
+                      <img src={event?.image?.startsWith('http') ? event.image : `${BACKEND_URL}${event?.image || '/placeholder.png'}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>{event?.title || 'Unnamed Event'}</span>
+                  </td>
+                  <td style={{ padding: '14px 20px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{event?.organizer?.organizerName || 'Unknown'}</td>
+                  <td style={{ padding: '14px 20px' }}><span style={{ padding: '4px 10px', borderRadius: '20px', background: 'rgba(0,0,0,0.05)', fontSize: '0.75rem' }}>{event?.category || 'General'}</span></td>
+                  <td style={{ padding: '14px 20px', fontSize: '0.85rem' }}>{event?.venue || 'No Venue'}, {event?.city || 'No City'}</td>
+                  <td style={{ padding: '14px 20px' }}><StatusBadge status={event?.status || 'pending'} /></td>
+                  <td style={{ padding: '14px 20px' }}>
+                    {event.status === 'pending' && (
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button onClick={(e) => { e.stopPropagation(); handleAction(event._id, 'creation', 'approved'); }} style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(16,185,129,0.1)', color: 'var(--success)', border: 'none', cursor: 'pointer' }} title="Approve"><Check size={16} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleAction(event._id, 'creation', 'rejected'); }} style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239,68,68,0.1)', color: 'var(--error)', border: 'none', cursor: 'pointer' }} title="Reject"><X size={16} /></button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 
-  const renderOrganizersView = () => (
-    <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-      <div style={{ padding: 'var(--spacing-6)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+  const renderOrganizersView = () => {
+    const filtered = organizersList.filter(o => o._id?.toLowerCase().includes(searchTerm.toLowerCase()));
+    return (
+    <div className="glass-card list-card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="section-header">
         <div>
-          <h3 style={{ fontSize: '1.25rem' }}>Organizer Directory</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Full list of hosts and their platform activity.</p>
+          <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Organizer Directory</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '4px 0 0' }}>Full list of hosts and their platform activity.</p>
         </div>
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <Search size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '16px' }} />
-          <input 
-            type="text" 
-            placeholder="Search organizers..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ 
-              padding: '12px 16px 12px 48px', 
-              borderRadius: '12px', 
-              border: '1px solid var(--border-color)', 
-              background: 'var(--bg-tertiary)',
-              fontSize: '0.9rem',
-              width: '280px',
-              outline: 'none',
-              color: 'var(--text-primary)'
-            }}
-          />
+        <div className="search-box">
+          <Search size={15} color="var(--text-muted)" />
+          <input type="text" placeholder="Search organizers..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
       </div>
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: 'var(--bg-tertiary)', textAlign: 'left' }}>
-              <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Name</th>
-              <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Contact</th>
-              <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Website</th>
-              <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Total Events</th>
-              <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Verified</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading organizers...</td></tr>
-            ) : organizersList.filter(o => o._id?.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 ? (
-              <tr><td colSpan={5} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No organizers match your search.' : 'No organizers found.'}</td></tr>
-            ) : organizersList.filter(o => o._id?.toLowerCase().includes(searchTerm.toLowerCase())).map((org, i) => (
+      {isMobile ? (
+        <div>
+          {loading ? <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>
+          : filtered.length === 0 ? <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No organizers found.'}</div>
+          : filtered.map((org, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', borderBottom: '1px solid var(--border-color)' }}>
+              <div style={{ width: '44px', height: '44px', minWidth: '44px', borderRadius: '10px', overflow: 'hidden', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {org?.logo ? <img src={org.logo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
+                : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{org?._id || 'Unnamed'}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>{org?.eventCount || 0} events</div>
+              </div>
+              <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '0.68rem', fontWeight: 700, background: org?.isVerified ? 'rgba(16,185,129,0.1)' : 'rgba(0,0,0,0.05)', color: org?.isVerified ? 'var(--success)' : 'var(--text-muted)', flexShrink: 0 }}>
+                {org?.isVerified ? 'VERIFIED' : 'UNVERIFIED'}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'var(--bg-tertiary)', textAlign: 'left' }}>
+                <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Name</th>
+                <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Contact</th>
+                <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Website</th>
+                <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Events</th>
+                <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Verified</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? <tr><td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading organizers...</td></tr>
+              : filtered.length === 0 ? <tr><td colSpan={5} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No organizers found.'}</td></tr>
+              : filtered.map((org, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '16px var(--spacing-6)' }}>
+                  <td style={{ padding: '14px 20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <div style={{ width: '40px', height: '40px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {org?.logo ? (
-                          <img src={org.logo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
-                        ) : (
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                        )}
+                        {org?.logo ? <img src={org.logo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
+                        : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>}
                       </div>
                       <div>
                         <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>{org?._id || 'Unnamed'}</div>
@@ -731,77 +744,80 @@ const App = () => {
                       </div>
                     </div>
                   </td>
-                  <td style={{ padding: '16px var(--spacing-6)', fontSize: '0.85rem' }}>{org?.contact || 'N/A'}</td>
-                  <td style={{ padding: '16px var(--spacing-6)', fontSize: '0.85rem' }}>
-                    {org?.website ? <a href={org.website} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-primary)' }}>Visit</a> : '-'}
-                  </td>
-                  <td style={{ padding: '16px var(--spacing-6)', fontSize: '0.9rem', fontWeight: 700 }}>{org?.eventCount || 0}</td>
-                  <td style={{ padding: '16px var(--spacing-6)' }}>
-                    <span style={{ padding: '4px 8px', borderRadius: '4px', background: org?.isVerified ? 'rgba(16, 185, 129, 0.1)' : 'rgba(0,0,0,0.05)', color: org?.isVerified ? 'var(--success)' : 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 700 }}>
+                  <td style={{ padding: '14px 20px', fontSize: '0.85rem' }}>{org?.contact || 'N/A'}</td>
+                  <td style={{ padding: '14px 20px', fontSize: '0.85rem' }}>{org?.website ? <a href={org.website} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-primary)' }}>Visit</a> : '-'}</td>
+                  <td style={{ padding: '14px 20px', fontSize: '0.9rem', fontWeight: 700 }}>{org?.eventCount || 0}</td>
+                  <td style={{ padding: '14px 20px' }}>
+                    <span style={{ padding: '4px 8px', borderRadius: '4px', background: org?.isVerified ? 'rgba(16,185,129,0.1)' : 'rgba(0,0,0,0.05)', color: org?.isVerified ? 'var(--success)' : 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 700 }}>
                       {org?.isVerified ? 'VERIFIED' : 'NO'}
                     </span>
                   </td>
                 </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
-  );
+  );};
 
-  const renderVenuesView = () => (
-    <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-      <div style={{ padding: 'var(--spacing-6)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+  const renderVenuesView = () => {
+    const filtered = venuesList.filter(v => v._id?.venue?.toLowerCase().includes(searchTerm.toLowerCase()) || v._id?.city?.toLowerCase().includes(searchTerm.toLowerCase()));
+    return (
+    <div className="glass-card list-card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="section-header">
         <div>
-          <h3 style={{ fontSize: '1.25rem' }}>Venue Statistics</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>High-traffic locations and venue distribution.</p>
+          <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Venue Statistics</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '4px 0 0' }}>High-traffic locations and venue distribution.</p>
         </div>
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <Search size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '16px' }} />
-          <input 
-            type="text" 
-            placeholder="Search venues..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ 
-              padding: '12px 16px 12px 48px', 
-              borderRadius: '12px', 
-              border: '1px solid var(--border-color)', 
-              background: 'var(--bg-tertiary)',
-              fontSize: '0.9rem',
-              width: '280px',
-              outline: 'none',
-              color: 'var(--text-primary)'
-            }}
-          />
+        <div className="search-box">
+          <Search size={15} color="var(--text-muted)" />
+          <input type="text" placeholder="Search venues..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
       </div>
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: 'var(--bg-tertiary)', textAlign: 'left' }}>
-              <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Venue Name</th>
-              <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>City</th>
-              <th style={{ padding: '16px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Total Events</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={3} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading venues...</td></tr>
-            ) : venuesList.filter(v => v._id?.venue?.toLowerCase().includes(searchTerm.toLowerCase()) || v._id?.city?.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 ? (
-              <tr><td colSpan={3} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No venues match your search.' : 'No venues found.'}</td></tr>
-            ) : venuesList.filter(v => v._id?.venue?.toLowerCase().includes(searchTerm.toLowerCase()) || v._id?.city?.toLowerCase().includes(searchTerm.toLowerCase())).map((v, i) => (
+      {isMobile ? (
+        <div>
+          {loading ? <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>
+          : filtered.length === 0 ? <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No venues found.'}</div>
+          : filtered.map((v, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', borderBottom: '1px solid var(--border-color)' }}>
+              <div style={{ width: '40px', height: '40px', minWidth: '40px', borderRadius: '10px', background: 'rgba(37,99,235,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v?._id?.venue || 'Unnamed Venue'}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>{v?._id?.city || 'Unknown City'}</div>
+              </div>
+              <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--accent-primary)', flexShrink: 0 }}>{v?.eventCount || 0}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'var(--bg-tertiary)', textAlign: 'left' }}>
+                <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Venue Name</th>
+                <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>City</th>
+                <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Total Events</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? <tr><td colSpan={3} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading venues...</td></tr>
+              : filtered.length === 0 ? <tr><td colSpan={3} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No venues found.'}</td></tr>
+              : filtered.map((v, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '16px var(--spacing-6)', fontSize: '0.9rem', fontWeight: 600 }}>{v?._id?.venue || 'Unnamed Venue'}</td>
-                  <td style={{ padding: '16px var(--spacing-6)', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{v?._id?.city || 'Unknown City'}</td>
-                  <td style={{ padding: '16px var(--spacing-6)', fontSize: '1rem', fontWeight: 800, color: 'var(--accent-primary)' }}>{v?.eventCount || 0}</td>
+                  <td style={{ padding: '14px 20px', fontSize: '0.9rem', fontWeight: 600 }}>{v?._id?.venue || 'Unnamed Venue'}</td>
+                  <td style={{ padding: '14px 20px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{v?._id?.city || 'Unknown City'}</td>
+                  <td style={{ padding: '14px 20px', fontSize: '1rem', fontWeight: 800, color: 'var(--accent-primary)' }}>{v?.eventCount || 0}</td>
                 </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
-  );
+  );};
 
   const markQueryRead = async (id: string) => {
     await authFetch(`${API_BASE}/queries/${id}/read`, { method: 'PATCH' });
@@ -817,10 +833,10 @@ const App = () => {
     const unreadCount = queriesList.filter(q => q.status === 'unread').length;
 
     return (
-      <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: 'var(--spacing-6)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="glass-card list-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="section-header">
           <div>
-            <h3 style={{ fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h3 style={{ fontSize: '1.25rem', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
               Organizer Queries
               {unreadCount > 0 && (
                 <span style={{ padding: '2px 10px', borderRadius: '20px', background: 'rgba(239,68,68,0.1)', color: 'var(--error)', fontSize: '0.75rem', fontWeight: 700 }}>
@@ -828,17 +844,11 @@ const App = () => {
                 </span>
               )}
             </h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Messages sent by organizers from their dashboard.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '4px 0 0' }}>Messages sent by organizers from their dashboard.</p>
           </div>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <Search size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '16px' }} />
-            <input
-              type="text"
-              placeholder="Search queries..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ padding: '12px 16px 12px 48px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', fontSize: '0.9rem', width: '280px', outline: 'none', color: 'var(--text-primary)' }}
-            />
+          <div className="search-box">
+            <Search size={15} color="var(--text-muted)" />
+            <input type="text" placeholder="Search queries..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
         </div>
 
@@ -855,7 +865,7 @@ const App = () => {
               key={q._id}
               onClick={() => q.status === 'unread' && markQueryRead(q._id)}
               style={{
-                padding: '20px var(--spacing-6)',
+                padding: isMobile ? '14px 16px' : '20px var(--spacing-6)',
                 borderBottom: '1px solid var(--border-color)',
                 display: 'flex',
                 gap: '16px',
@@ -874,21 +884,21 @@ const App = () => {
 
               <div style={{ flex: 1, minWidth: 0 }}>
                 {/* Header row */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '8px' }}>
-                  <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                  <div style={{ minWidth: 0 }}>
                     <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>{q.organizerName || 'Unknown'}</span>
-                    <span style={{ margin: '0 8px', color: 'var(--border-color)' }}>·</span>
+                    <span style={{ margin: '0 6px', color: 'var(--border-color)' }}>·</span>
                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{q.eventTitle || 'Unknown Event'}</span>
-                    {q.organizerEmail && (
+                    {q.organizerEmail && !isMobile && (
                       <>
-                        <span style={{ margin: '0 8px', color: 'var(--border-color)' }}>·</span>
+                        <span style={{ margin: '0 6px', color: 'var(--border-color)' }}>·</span>
                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{q.organizerEmail}</span>
                       </>
                     )}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                      {new Date(q.createdAt).toLocaleString()}
+                      {new Date(q.createdAt).toLocaleDateString()}
                     </span>
                     {q.status === 'unread' && (
                       <span style={{ padding: '2px 8px', borderRadius: '10px', background: 'rgba(37,99,235,0.1)', color: 'var(--accent-primary)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase' }}>New</span>
@@ -914,65 +924,79 @@ const App = () => {
     );
 
     return (
-      <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: 'var(--spacing-6)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="glass-card list-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="section-header">
           <div>
             <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Past Events</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '4px 0 0' }}>Events that have already taken place — kept for records.</p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>{filtered.length} events</span>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <Search size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '12px' }} />
-              <input type="text" placeholder="Search past events..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                style={{ padding: '8px 12px 8px 34px', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', fontSize: '0.85rem', width: '220px', outline: 'none', color: 'var(--text-primary)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: isMobile ? '100%' : 'auto' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{filtered.length} events</span>
+            <div className="search-box" style={{ flex: isMobile ? 1 : 'unset' }}>
+              <Search size={15} color="var(--text-muted)" />
+              <input type="text" placeholder="Search past events..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
             </div>
           </div>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: 'var(--bg-tertiary)', textAlign: 'left' }}>
-                <th style={{ padding: '14px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Event</th>
-                <th style={{ padding: '14px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Organizer</th>
-                <th style={{ padding: '14px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Venue</th>
-                <th style={{ padding: '14px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Date</th>
-                <th style={{ padding: '14px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Views</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={5} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ fontSize: '2rem' }}>🕐</div>
-                    <p style={{ margin: 0 }}>{searchTerm ? 'No results match your search.' : 'No past events yet.'}</p>
-                  </div>
-                </td></tr>
-              ) : filtered.map((e: any) => (
-                <tr key={e._id}
-                  onClick={() => { setSelectedRequest({ id: e._id, type: 'creation' }); setIsViewModalOpen(true); }}
-                  style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer', transition: 'background 0.15s' }}
-                  onMouseEnter={el => el.currentTarget.style.background = 'var(--bg-tertiary)'}
-                  onMouseLeave={el => el.currentTarget.style.background = 'transparent'}
-                >
-                  <td style={{ padding: '14px var(--spacing-6)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '44px', height: '44px', borderRadius: '8px', overflow: 'hidden', background: 'var(--bg-tertiary)', flexShrink: 0, border: '1px solid var(--border-color)' }}>
-                      <img src={e.image?.startsWith('http') ? e.image : `${BACKEND_URL}${e.image}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
-                    </div>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{e.title}</span>
-                  </td>
-                  <td style={{ padding: '14px var(--spacing-6)', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{e.organizer?.organizerName || '—'}</td>
-                  <td style={{ padding: '14px var(--spacing-6)', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{e.venue}{e.city ? `, ${e.city}` : ''}</td>
-                  <td style={{ padding: '14px var(--spacing-6)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{new Date(e.date).toLocaleDateString()}</td>
-                  <td style={{ padding: '14px var(--spacing-6)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{e.views || 0}</td>
+        {isMobile ? (
+          <div>
+            {loading ? <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>
+            : filtered.length === 0 ? <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No past events yet.'}</div>
+            : filtered.map((e: any) => (
+              <div key={e._id}
+                onClick={() => { setSelectedRequest({ id: e._id, type: 'creation' }); setIsViewModalOpen(true); }}
+                style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', transition: 'background 0.15s' }}
+                onMouseEnter={el => (el.currentTarget.style.background = 'var(--bg-tertiary)')}
+                onMouseLeave={el => (el.currentTarget.style.background = 'transparent')}
+              >
+                <div style={{ width: '44px', height: '44px', minWidth: '44px', borderRadius: '8px', overflow: 'hidden', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', flexShrink: 0 }}>
+                  <img src={e.image?.startsWith('http') ? e.image : `${BACKEND_URL}${e.image}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>{new Date(e.date).toLocaleDateString()}{e.venue ? ` · ${e.venue}` : ''}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: 'var(--bg-tertiary)', textAlign: 'left' }}>
+                  <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Event</th>
+                  <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Organizer</th>
+                  <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Venue</th>
+                  <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Date</th>
+                  <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Views</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {loading ? <tr><td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</td></tr>
+                : filtered.length === 0 ? <tr><td colSpan={5} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No past events yet.'}</td></tr>
+                : filtered.map((e: any) => (
+                  <tr key={e._id} onClick={() => { setSelectedRequest({ id: e._id, type: 'creation' }); setIsViewModalOpen(true); }}
+                    style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer', transition: 'background 0.15s' }}
+                    onMouseEnter={el => el.currentTarget.style.background = 'var(--bg-tertiary)'}
+                    onMouseLeave={el => el.currentTarget.style.background = 'transparent'}
+                  >
+                    <td style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ width: '44px', height: '44px', borderRadius: '8px', overflow: 'hidden', background: 'var(--bg-tertiary)', flexShrink: 0, border: '1px solid var(--border-color)' }}>
+                        <img src={e.image?.startsWith('http') ? e.image : `${BACKEND_URL}${e.image}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
+                      </div>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{e.title}</span>
+                    </td>
+                    <td style={{ padding: '14px 20px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{e.organizer?.organizerName || '—'}</td>
+                    <td style={{ padding: '14px 20px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{e.venue}{e.city ? `, ${e.city}` : ''}</td>
+                    <td style={{ padding: '14px 20px', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{new Date(e.date).toLocaleDateString()}</td>
+                    <td style={{ padding: '14px 20px', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{e.views || 0}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     );
   };
@@ -990,8 +1014,8 @@ const App = () => {
     );
 
     return (
-      <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: 'var(--spacing-6)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="glass-card list-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="section-header">
           <div>
             <h3 style={{ fontSize: '1.25rem', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
               City Requests
@@ -1001,61 +1025,73 @@ const App = () => {
             </h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '4px 0 0' }}>Cities users want happenbe to expand to.</p>
           </div>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <Search size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '12px' }} />
-            <input type="text" placeholder="Search cities..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-              style={{ padding: '8px 12px 8px 34px', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', fontSize: '0.85rem', width: '220px', outline: 'none', color: 'var(--text-primary)' }} />
+          <div className="search-box">
+            <Search size={15} color="var(--text-muted)" />
+            <input type="text" placeholder="Search cities..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: 'var(--bg-tertiary)', textAlign: 'left' }}>
-                <th style={{ padding: '14px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>City</th>
-                <th style={{ padding: '14px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Requests</th>
-                <th style={{ padding: '14px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Demand</th>
-                <th style={{ padding: '14px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Latest</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={4} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={4} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  {searchTerm ? 'No cities match your search.' : 'No city requests yet.'}
-                </td></tr>
-              ) : filtered.map(([city, reqs]) => {
-                const maxCount = sorted[0]?.[1]?.length || 1;
-                const pct = Math.round((reqs.length / maxCount) * 100);
-                const latest = reqs.reduce((a: any, b: any) => new Date(a.createdAt) > new Date(b.createdAt) ? a : b);
-                return (
-                  <tr key={city} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                    <td style={{ padding: '16px var(--spacing-6)', fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
-                      🌍 {city}
-                    </td>
-                    <td style={{ padding: '16px var(--spacing-6)' }}>
-                      <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(37,99,235,0.1)', color: 'var(--accent-primary)', fontWeight: 800, fontSize: '0.85rem' }}>
-                        {reqs.length}
-                      </span>
-                    </td>
-                    <td style={{ padding: '16px var(--spacing-6)', minWidth: '160px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ flex: 1, height: '6px', borderRadius: '10px', background: 'var(--bg-tertiary)', overflow: 'hidden' }}>
-                          <div style={{ width: `${pct}%`, height: '100%', borderRadius: '10px', background: 'var(--accent-gradient)', transition: 'width 0.4s ease' }} />
+        {isMobile ? (
+          <div>
+            {loading ? <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>
+            : filtered.length === 0 ? <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No city requests yet.'}</div>
+            : filtered.map(([city, reqs]) => {
+              const maxCount = sorted[0]?.[1]?.length || 1;
+              const pct = Math.round((reqs.length / maxCount) * 100);
+              return (
+                <div key={city} style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-color)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>🌍 {city}</span>
+                    <span style={{ padding: '3px 10px', borderRadius: '20px', background: 'rgba(37,99,235,0.1)', color: 'var(--accent-primary)', fontWeight: 800, fontSize: '0.8rem' }}>{reqs.length}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ flex: 1, height: '5px', borderRadius: '10px', background: 'var(--bg-tertiary)', overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', borderRadius: '10px', background: 'var(--accent-gradient)' }} />
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, minWidth: '28px' }}>{pct}%</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: 'var(--bg-tertiary)', textAlign: 'left' }}>
+                  <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>City</th>
+                  <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Requests</th>
+                  <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Demand</th>
+                  <th style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Latest</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? <tr><td colSpan={4} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</td></tr>
+                : filtered.length === 0 ? <tr><td colSpan={4} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No city requests yet.'}</td></tr>
+                : filtered.map(([city, reqs]) => {
+                  const maxCount = sorted[0]?.[1]?.length || 1;
+                  const pct = Math.round((reqs.length / maxCount) * 100);
+                  const latest = reqs.reduce((a: any, b: any) => new Date(a.createdAt) > new Date(b.createdAt) ? a : b);
+                  return (
+                    <tr key={city} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                      <td style={{ padding: '14px 20px', fontWeight: 700, fontSize: '0.95rem' }}>🌍 {city}</td>
+                      <td style={{ padding: '14px 20px' }}><span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(37,99,235,0.1)', color: 'var(--accent-primary)', fontWeight: 800, fontSize: '0.85rem' }}>{reqs.length}</span></td>
+                      <td style={{ padding: '14px 20px', minWidth: '160px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ flex: 1, height: '6px', borderRadius: '10px', background: 'var(--bg-tertiary)', overflow: 'hidden' }}>
+                            <div style={{ width: `${pct}%`, height: '100%', borderRadius: '10px', background: 'var(--accent-gradient)' }} />
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, minWidth: '32px' }}>{pct}%</span>
                         </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, minWidth: '32px' }}>{pct}%</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '16px var(--spacing-6)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      {new Date(latest.createdAt).toLocaleDateString()}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      </td>
+                      <td style={{ padding: '14px 20px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(latest.createdAt).toLocaleDateString()}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     );
   };
@@ -1126,22 +1162,22 @@ const App = () => {
 
   const renderTeamView = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-    <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-      <div style={{ padding: 'var(--spacing-6)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="glass-card list-card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="section-header">
         <div>
           <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Team Management</h3>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '4px 0 0' }}>Manage admin accounts and permissions.</p>
         </div>
-        <button onClick={() => setShowAddAdmin(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '12px', border: 'none', background: 'var(--accent-gradient)', color: '#fff', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer' }}>
+        <button onClick={() => setShowAddAdmin(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '12px', border: 'none', background: 'var(--accent-gradient)', color: '#fff', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
           <Plus size={16} /> Add Admin
         </button>
       </div>
 
       {/* Add Admin Form */}
       {showAddAdmin && (
-        <div style={{ padding: 'var(--spacing-6)', borderBottom: '1px solid var(--border-color)', background: 'var(--bg-tertiary)' }}>
+        <div style={{ padding: isMobile ? '16px' : 'var(--spacing-6)', borderBottom: '1px solid var(--border-color)', background: 'var(--bg-tertiary)' }}>
           <h4 style={{ margin: '0 0 16px', fontSize: '0.95rem', fontWeight: 700 }}>New Admin</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr 1fr', gap: '12px', marginBottom: '12px' }}>
             {[
               { key: 'name', placeholder: 'Full name', type: 'text' },
               { key: 'email', placeholder: 'Email address', type: 'email' },
@@ -1170,56 +1206,72 @@ const App = () => {
         </div>
       )}
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: 'var(--bg-tertiary)', textAlign: 'left' }}>
-              {['Name', 'Email', 'Role', 'Status', 'Created', 'Actions'].map(h => (
-                <th key={h} style={{ padding: '14px var(--spacing-6)', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {teamLoading ? (
-              <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</td></tr>
-            ) : teamList.length === 0 ? (
-              <tr><td colSpan={6} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>No admins yet.</td></tr>
-            ) : teamList.map(a => (
-              <tr key={a._id} style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer' }}
-                onClick={() => { setSelectedAdmin(a); setEditAdminFields({ email: a.email, password: '' }); setEditAdminMsg(null); }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-tertiary)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                <td style={{ padding: '16px var(--spacing-6)', fontWeight: 700, fontSize: '0.9rem' }}>{a.name}</td>
-                <td style={{ padding: '16px var(--spacing-6)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{a.email}</td>
-                <td style={{ padding: '16px var(--spacing-6)' }}>
-                  <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 700, background: a.role === 'super_admin' ? 'rgba(37,99,235,0.1)' : 'rgba(0,0,0,0.05)', color: a.role === 'super_admin' ? 'var(--accent-primary)' : 'var(--text-secondary)', textTransform: 'uppercase' }}>
+      {isMobile ? (
+        <div>
+          {teamLoading ? <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>
+          : teamList.length === 0 ? <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>No admins yet.</div>
+          : teamList.map(a => (
+            <div key={a._id} style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '12px' }}
+              onClick={() => { setSelectedAdmin(a); setEditAdminFields({ email: a.email, password: '' }); setEditAdminMsg(null); }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>{a.name}</div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '0.68rem', fontWeight: 700, background: a.role === 'super_admin' ? 'rgba(37,99,235,0.1)' : 'rgba(0,0,0,0.05)', color: a.role === 'super_admin' ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>
                     {a.role === 'super_admin' ? 'Super Admin' : 'Admin'}
                   </span>
-                </td>
-                <td style={{ padding: '16px var(--spacing-6)' }}>
-                  <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 700, background: a.isActive ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: a.isActive ? 'var(--success)' : 'var(--error)' }}>
+                  <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '0.68rem', fontWeight: 700, background: a.isActive ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: a.isActive ? 'var(--success)' : 'var(--error)' }}>
                     {a.isActive ? 'Active' : 'Inactive'}
                   </span>
-                </td>
-                <td style={{ padding: '16px var(--spacing-6)', fontSize: '0.82rem', color: 'var(--text-muted)' }}>{new Date(a.createdAt).toLocaleDateString()}</td>
-                <td style={{ padding: '16px var(--spacing-6)' }}>
-                  {a.role !== 'super_admin' && (
-                    <button onClick={e => {
-                        e.stopPropagation();
-                        const action = a.isActive ? 'deactivate' : 'activate';
-                        if (window.confirm(`Are you sure you want to ${action} ${a.name}?`)) toggleAdmin(a._id, !a.isActive);
-                      }}
-                      style={{ padding: '6px 14px', borderRadius: '8px', border: `1px solid ${a.isActive ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`, background: 'transparent', color: a.isActive ? 'var(--error)' : 'var(--success)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}>
-                      {a.isActive ? 'Deactivate' : 'Activate'}
-                    </button>
-                  )}
-                </td>
+                </div>
+              </div>
+              {a.role !== 'super_admin' && (
+                <button onClick={e => { e.stopPropagation(); const action = a.isActive ? 'deactivate' : 'activate'; if (window.confirm(`${action} ${a.name}?`)) toggleAdmin(a._id, !a.isActive); }}
+                  style={{ padding: '6px 12px', borderRadius: '8px', border: `1px solid ${a.isActive ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`, background: 'transparent', color: a.isActive ? 'var(--error)' : 'var(--success)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  {a.isActive ? 'Deactivate' : 'Activate'}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'var(--bg-tertiary)', textAlign: 'left' }}>
+                {['Name', 'Email', 'Role', 'Status', 'Created', 'Actions'].map(h => (
+                  <th key={h} style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {teamLoading ? <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</td></tr>
+              : teamList.length === 0 ? <tr><td colSpan={6} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>No admins yet.</td></tr>
+              : teamList.map(a => (
+                <tr key={a._id} style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer' }}
+                  onClick={() => { setSelectedAdmin(a); setEditAdminFields({ email: a.email, password: '' }); setEditAdminMsg(null); }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-tertiary)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <td style={{ padding: '14px 20px', fontWeight: 700, fontSize: '0.9rem' }}>{a.name}</td>
+                  <td style={{ padding: '14px 20px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{a.email}</td>
+                  <td style={{ padding: '14px 20px' }}><span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 700, background: a.role === 'super_admin' ? 'rgba(37,99,235,0.1)' : 'rgba(0,0,0,0.05)', color: a.role === 'super_admin' ? 'var(--accent-primary)' : 'var(--text-secondary)', textTransform: 'uppercase' }}>{a.role === 'super_admin' ? 'Super Admin' : 'Admin'}</span></td>
+                  <td style={{ padding: '14px 20px' }}><span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 700, background: a.isActive ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: a.isActive ? 'var(--success)' : 'var(--error)' }}>{a.isActive ? 'Active' : 'Inactive'}</span></td>
+                  <td style={{ padding: '14px 20px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>{new Date(a.createdAt).toLocaleDateString()}</td>
+                  <td style={{ padding: '14px 20px' }}>
+                    {a.role !== 'super_admin' && (
+                      <button onClick={e => { e.stopPropagation(); const action = a.isActive ? 'deactivate' : 'activate'; if (window.confirm(`Are you sure you want to ${action} ${a.name}?`)) toggleAdmin(a._id, !a.isActive); }}
+                        style={{ padding: '6px 14px', borderRadius: '8px', border: `1px solid ${a.isActive ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`, background: 'transparent', color: a.isActive ? 'var(--error)' : 'var(--success)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}>
+                        {a.isActive ? 'Deactivate' : 'Activate'}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
 
     </div>
@@ -1340,11 +1392,11 @@ const App = () => {
   const renderSettingsView = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {admin?.role === 'super_admin' && (
-        <div className="glass-card" style={{ padding: '28px 32px' }}>
+        <div className="glass-card" style={{ padding: isMobile ? '16px' : '28px 32px' }}>
           <h3 style={{ fontSize: '1rem', fontWeight: 800, margin: '0 0 6px', color: 'var(--text-primary)' }}>Change Credentials</h3>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '0 0 24px' }}>Update your login email or password. Current password is required to confirm.</p>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '0 0 20px' }}>Update your login email or password. Current password is required to confirm.</p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '14px', marginBottom: '16px' }}>
             {[
               { key: 'currentPassword', label: 'Current Password', type: 'password', placeholder: '••••••••' },
               { key: 'newEmail', label: 'New Email (optional)', type: 'email', placeholder: 'new@happenbe.com' },
@@ -1376,7 +1428,7 @@ const App = () => {
           </button>
         </div>
       )}
-      <div className="glass-card" style={{ padding: '28px 32px' }}>
+      <div className="glass-card" style={{ padding: isMobile ? '16px' : '28px 32px' }}>
         <h3 style={{ fontSize: '1rem', fontWeight: 800, margin: '0 0 6px', color: 'var(--text-primary)' }}>Account Info</h3>
         <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '0 0 16px' }}>Your current session details.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1433,16 +1485,16 @@ const App = () => {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
         {/* KPI row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '12px' }}>
           {[
             { label: 'Total Views', value: a.engagement.totalViews.toLocaleString(), color: '#3b82f6' },
             { label: 'Total RSVPs', value: a.engagement.totalRsvp.toLocaleString(), color: '#7c3aed' },
             { label: 'Avg Views / Event', value: Math.round(a.engagement.avgViews).toLocaleString(), color: '#10b981' },
             { label: 'City Demand Signals', value: a.cityDemand.reduce((s: number, c: any) => s + c.count, 0).toLocaleString(), color: '#f59e0b' },
           ].map((k, i) => (
-            <div key={i} className="glass-card" style={{ padding: '20px' }}>
-              <p style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>{k.label}</p>
-              <p style={{ fontSize: '2rem', fontWeight: 900, color: k.color, margin: 0, letterSpacing: '-0.04em' }}>{k.value}</p>
+            <div key={i} className="glass-card stat-card" style={{ padding: isMobile ? '14px' : '20px' }}>
+              <p style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>{k.label}</p>
+              <p style={{ fontSize: isMobile ? '1.4rem' : '2rem', fontWeight: 900, color: k.color, margin: 0, letterSpacing: '-0.04em' }}>{k.value}</p>
             </div>
           ))}
         </div>
@@ -1465,7 +1517,7 @@ const App = () => {
         </>)}
 
         {/* Row: Status pie + Organizer verification */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '20px' }}>
           {card(<>
             {sectionTitle('Event Status', 'Breakdown by current status')}
             <ResponsiveContainer width="100%" height={180}>
@@ -1507,7 +1559,7 @@ const App = () => {
         </div>
 
         {/* Row: Top cities + City demand */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '20px' }}>
           {card(<>
             {sectionTitle('Top Cities', 'Events per city')}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1554,26 +1606,30 @@ const App = () => {
         {/* Top events by views */}
         {card(<>
           {sectionTitle('Top Events by Views')}
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: 'var(--bg-tertiary)' }}>
-                {['Event', 'City', 'Venue', 'Views', 'RSVPs'].map(h => (
-                  <th key={h} style={{ padding: '10px 14px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'left' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {a.topEvents.map((e: any, i: number) => (
-                <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '12px 14px', fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>{e.title}</td>
-                  <td style={{ padding: '12px 14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{e.city || '—'}</td>
-                  <td style={{ padding: '12px 14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{e.venue || '—'}</td>
-                  <td style={{ padding: '12px 14px', fontWeight: 800, color: '#3b82f6' }}>{(e.views || 0).toLocaleString()}</td>
-                  <td style={{ padding: '12px 14px', fontWeight: 800, color: '#7c3aed' }}>{(e.goingCount || 0).toLocaleString()}</td>
+          <div style={{ overflowX: 'auto', margin: '0 -24px', padding: '0 24px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? 'unset' : '500px' }}>
+              <thead>
+                <tr style={{ background: 'var(--bg-tertiary)' }}>
+                  <th style={{ padding: '10px 14px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'left' }}>Event</th>
+                  {!isMobile && <th style={{ padding: '10px 14px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'left' }}>City</th>}
+                  {!isMobile && <th style={{ padding: '10px 14px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'left' }}>Venue</th>}
+                  <th style={{ padding: '10px 14px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'left' }}>Views</th>
+                  <th style={{ padding: '10px 14px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'left' }}>RSVPs</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {a.topEvents.map((e: any, i: number) => (
+                  <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                    <td style={{ padding: '10px 14px', fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)', maxWidth: isMobile ? '140px' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</td>
+                    {!isMobile && <td style={{ padding: '10px 14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{e.city || '—'}</td>}
+                    {!isMobile && <td style={{ padding: '10px 14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{e.venue || '—'}</td>}
+                    <td style={{ padding: '10px 14px', fontWeight: 800, color: '#3b82f6', whiteSpace: 'nowrap' }}>{(e.views || 0).toLocaleString()}</td>
+                    <td style={{ padding: '10px 14px', fontWeight: 800, color: '#7c3aed', whiteSpace: 'nowrap' }}>{(e.goingCount || 0).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>)}
 
       </div>
@@ -1618,24 +1674,33 @@ const App = () => {
 
   return (
     <>
-      <Sidebar currentView={currentView} onViewChange={setCurrentView} collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(c => !c)} />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg-primary)', marginLeft: '240px' }}>
-        <Navbar />
+      <Sidebar
+        currentView={currentView}
+        onViewChange={setCurrentView}
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(c => !c)}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg-primary)', marginLeft: isMobile ? 0 : '240px' }}>
+        <Navbar onMenuToggle={() => setSidebarOpen(o => !o)} />
 
         <main style={{
-          padding: 'var(--spacing-8)',
+          padding: isMobile ? 'var(--spacing-4)' : 'var(--spacing-8)',
           flex: 1,
           background: 'var(--bg-primary)'
         }}>
-          <header style={{ 
-            marginBottom: 'var(--spacing-8)',
+          <header style={{
+            marginBottom: 'var(--spacing-6)',
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center'
+            alignItems: isMobile ? 'flex-start' : 'center',
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: isMobile ? '12px' : 0
           }}>
             <div>
-              <h1 style={{ 
-                fontSize: '2.5rem', 
+              <h1 style={{
+                fontSize: isMobile ? '1.6rem' : '2.5rem',
                 marginBottom: '4px',
                 background: 'var(--accent-gradient)',
                 WebkitBackgroundClip: 'text',
@@ -1643,7 +1708,7 @@ const App = () => {
                 fontWeight: 800,
                 letterSpacing: '-0.03em'
               }}>{getHeaderInfo().title}</h1>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', fontWeight: 500 }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: isMobile ? '0.85rem' : '1rem', fontWeight: 500 }}>
                 {getHeaderInfo().desc}
               </p>
             </div>

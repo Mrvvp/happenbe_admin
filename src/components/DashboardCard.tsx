@@ -16,10 +16,10 @@ const DashboardCard: React.FC<DashboardCardProps> = ({ title, value, icon: Icon,
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="glass-card"
+            className="glass-card stat-card"
             style={{
                 flex: 1,
-                minWidth: '240px'
+                minWidth: 0
             }}
         >
             <div style={{
