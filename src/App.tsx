@@ -14,7 +14,6 @@ import {
     Eye,
     Check,
     X,
-    ArrowRight,
     RefreshCw,
     Plus,
     Pencil,
