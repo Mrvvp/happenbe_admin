@@ -84,6 +84,7 @@ function blurField(e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) 
 // ── Component ──────────────────────────────────────────────────────────────
 const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps) => {
     const { token } = useAuth();
+    const isMobile = window.innerWidth < 768;
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [currentStep, setCurrentStep] = useState(1);
@@ -226,13 +227,13 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
 
     return (
         <AnimatePresence>
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', padding: isMobile ? '0' : '16px' }}>
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.94, y: 20 }}
+                    initial={{ opacity: 0, scale: isMobile ? 1 : 0.94, y: isMobile ? 40 : 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.94, y: 20 }}
+                    exit={{ opacity: 0, scale: isMobile ? 1 : 0.94, y: isMobile ? 40 : 20 }}
                     transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                    style={{ width: '100%', maxWidth: '860px', maxHeight: '92vh', background: 'var(--bg-secondary)', borderRadius: '24px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 32px 64px rgba(0,0,0,0.2)' }}
+                    style={{ width: '100%', maxWidth: isMobile ? '100%' : '860px', maxHeight: isMobile ? '95vh' : '92vh', background: 'var(--bg-secondary)', borderRadius: isMobile ? '20px 20px 0 0' : '24px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 32px 64px rgba(0,0,0,0.2)' }}
                 >
                     {isSuccess ? (
                         /* ── Success Screen ─────────────────────────────── */
@@ -259,7 +260,7 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
                         </div>
                     ) : (<>
                     {/* ── Header ───────────────────────────────────────── */}
-                    <div style={{ padding: '24px 32px 20px', borderBottom: '1px solid var(--border-color)', flexShrink: 0 }}>
+                    <div style={{ padding: isMobile ? '16px 16px 14px' : '24px 32px 20px', borderBottom: '1px solid var(--border-color)', flexShrink: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
                             <div>
                                 <h2 style={{ fontSize: '1.55rem', fontWeight: 800, margin: 0, background: 'linear-gradient(135deg, #1a1a1a 0%, #555 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.03em' }}>List New Event</h2>
@@ -294,7 +295,7 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
                     </div>
 
                     {/* ── Scrollable Content ───────────────────────────── */}
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : '32px' }}>
 
                         {/* STEP 1 */}
                         {currentStep === 1 && (
@@ -302,8 +303,8 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
                                 <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 4px', background: 'linear-gradient(135deg, #1a1a1a 0%, #555 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.02em' }}>Event Details</h3>
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 26px' }}>Core info scraped from the listing.</p>
 
-                                {/* 2-column grid — description is the only full-width exception */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                {/* 2-column grid on desktop, 1-column on mobile */}
+                                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '14px' : '20px' }}>
 
                                     {/* Title */}
                                     <div style={fieldBase}>
@@ -434,8 +435,8 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
                                         <input style={inputBase} name="city" value={eventData.city} onChange={handleText} placeholder="City (auto-fills on selection)" onFocus={focusOrange} onBlur={blurField} />
                                     </div>
 
-                                    {/* Description — only full-width field */}
-                                    <div style={{ ...fieldBase, gridColumn: 'span 2' }}>
+                                    {/* Description — full-width on both layouts */}
+                                    <div style={{ ...fieldBase, gridColumn: isMobile ? 'span 1' : 'span 2' }}>
                                         <label style={labelBase}>Description <span style={{ color: 'var(--accent-primary)' }}>*</span></label>
                                         <textarea style={{ ...inputBase, minHeight: '88px', resize: 'vertical' }} name="description" value={eventData.description} onChange={handleText} placeholder="What is this event about?" onFocus={focusOrange} onBlur={blurField} />
                                     </div>
@@ -495,7 +496,7 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
                             <motion.div key="s2" initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
                                 <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 4px', background: 'linear-gradient(135deg, #1a1a1a 0%, #555 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.02em' }}>Organizer Info</h3>
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 26px', lineHeight: 1.5 }}>WhatsApp, website, Instagram & booking are filled by the organizer after claiming.</p>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '14px' : '20px' }}>
                                     <div style={fieldBase}>
                                         <label style={labelBase}>Organizer / Company <span style={{ color: 'var(--accent-primary)' }}>*</span></label>
                                         <input style={inputBase} name="organizerName" value={eventData.organizerName} onChange={handleText} placeholder="Organizer or company name" onFocus={focusOrange} onBlur={blurField} />
@@ -507,7 +508,7 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
                                         </label>
                                         <input type="email" style={inputBase} name="organizerContact" value={eventData.organizerContact} onChange={handleText} placeholder="organizer@email.com" onFocus={focusOrange} onBlur={blurField} />
                                     </div>
-                                    <div style={{ gridColumn: 'span 2', padding: '14px 18px', background: 'rgba(37,99,235,0.05)', border: '1px solid rgba(37,99,235,0.18)', borderLeft: '3px solid var(--accent-primary)', borderRadius: '12px', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.65 }}>
+                                    <div style={{ gridColumn: isMobile ? 'span 1' : 'span 2', padding: '14px 18px', background: 'rgba(37,99,235,0.05)', border: '1px solid rgba(37,99,235,0.18)', borderLeft: '3px solid var(--accent-primary)', borderRadius: '12px', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.65 }}>
                                         After the organizer <strong style={{ color: 'var(--accent-primary)' }}>claims this event</strong>, they fill in WhatsApp, website, Instagram, and booking method — which grants the verified badge.
                                     </div>
                                 </div>
@@ -573,7 +574,7 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
                     </div>
 
                     {/* ── Footer ───────────────────────────────────────── */}
-                    <div style={{ padding: '18px 32px', borderTop: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.01)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                    <div style={{ padding: isMobile ? '12px 16px' : '18px 32px', borderTop: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.01)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                         <button type="button" onClick={currentStep > 1 ? () => setCurrentStep(s => s - 1) : onClose}
                             style={{ padding: '11px 26px', borderRadius: '14px', fontWeight: 700, fontSize: '0.93rem', background: 'transparent', border: '1.5px solid rgba(0,0,0,0.12)', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s' }}
                             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.04)'; if (currentStep > 1) e.currentTarget.style.transform = 'translateX(-3px)'; }}
