@@ -1,6 +1,6 @@
 import {
     LayoutDashboard, Calendar, Users, Settings, LogOut,
-    TrendingUp, MapPin, MessageSquare, History, Globe, ShieldCheck, X
+    TrendingUp, MapPin, MessageSquare, History, Globe, ShieldCheck, X, Send
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -98,6 +98,7 @@ const Sidebar = ({ currentView, onViewChange, isOpen = false, onClose }: Sidebar
                     <SidebarItem icon={Users}           label="Organizers"    active={currentView === 'organizers'}    onClick={() => handleNav('organizers')} />
                     <SidebarItem icon={MapPin}          label="Venues"        active={currentView === 'venues'}        onClick={() => handleNav('venues')} />
                     <SidebarItem icon={MessageSquare}   label="Queries"       active={currentView === 'queries'}       onClick={() => handleNav('queries')} />
+                    <SidebarItem icon={Send}            label="Send Mail"     active={currentView === 'send-mail'}     onClick={() => handleNav('send-mail')} />
                     <SidebarItem icon={Globe}           label="City Requests" active={currentView === 'city-requests'} onClick={() => handleNav('city-requests')} />
                     <SidebarItem icon={History}         label="Past Events"   active={currentView === 'past-events'}   onClick={() => handleNav('past-events')} />
                     <SidebarItem icon={TrendingUp}      label="Analytics"     active={currentView === 'analytics'}     onClick={() => handleNav('analytics')} />

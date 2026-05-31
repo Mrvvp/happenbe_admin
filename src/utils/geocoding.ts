@@ -10,7 +10,7 @@ export const fetchSuggestions = async (query: string): Promise<Suggestion[]> => 
   if (!query || query.length < 2) return [];
 
   try {
-    const viewbox = '75.65,11.50,76.00,11.10';
+    const viewbox = '74.85,12.80,77.40,8.20';
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=8&viewbox=${viewbox}&addressdetails=1&accept-language=en`,
       { headers: { 'Accept-Language': 'en' } }
@@ -25,12 +25,25 @@ export const fetchSuggestions = async (query: string): Promise<Suggestion[]> => 
       .map((item: any) => {
         const firstName = item.display_name.split(',')[0].trim();
         const name = item.namedetails?.['name:en'] || firstName;
+        const a = item.address || {};
+
+        let city: string = a.city || a.town || a.municipality || '';
+
+        if (!city) {
+          const dn: string = item.display_name || '';
+          if (/kozhikode/i.test(dn) || /calicut/i.test(dn)) city = 'Kozhikode';
+        }
+
+        if (!city) {
+          city = a.city_district || a.district || a.county || '';
+        }
+
         return {
           name,
           fullName: item.display_name,
           lat: parseFloat(item.lat),
           lng: parseFloat(item.lon),
-          city: item.address.city || item.address.town || item.address.village || item.address.suburb || item.address.county || ''
+          city
         };
       })
       .filter((s: Suggestion) => isLatin(s.name));

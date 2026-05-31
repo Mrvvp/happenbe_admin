@@ -117,7 +117,7 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
                 eventData.endTime && eventData.venue && eventData.city && eventData.description;
             return eventData.isMultiDay ? !!(base && eventData.endDate) : !!base;
         }
-        if (currentStep === 2) return !!(eventData.organizerName && eventData.organizerContact);
+        if (currentStep === 2) return !!eventData.organizerName;
         if (currentStep === 3) return files.images.length > 0;
         return true;
     };
@@ -503,7 +503,7 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
                                     </div>
                                     <div style={fieldBase}>
                                         <label style={labelBase}>
-                                            Contact Email <span style={{ color: 'var(--accent-primary)' }}>*</span>
+                                            Contact Email
                                             <span style={{ fontSize: '0.68rem', fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)', marginLeft: '3px' }}>(for discovery email)</span>
                                         </label>
                                         <input type="email" style={inputBase} name="organizerContact" value={eventData.organizerContact} onChange={handleText} placeholder="organizer@email.com" onFocus={focusOrange} onBlur={blurField} />

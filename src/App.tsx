@@ -19,11 +19,14 @@ import {
     Pencil,
     Trash2,
     CalendarDays,
-    Search
+    Search,
+    Copy,
+    Link
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api/admin';
 const BACKEND_URL = 'http://localhost:5000';
+const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || 'https://happenbe.com';
 
 const StatusBadge = ({ status }: { status: 'approved' | 'pending' | 'rejected' }) => {
   const styles = {
@@ -113,7 +116,7 @@ const App = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<{ id: string, type: any } | null>(null);
   const [activeTab, setActiveTab] = useState<'creation' | 'claim' | 'edit' | 'remove'>('creation');
-  const [currentView, setCurrentView] = useState<'dashboard' | 'events' | 'organizers' | 'venues' | 'queries' | 'past-events' | 'city-requests' | 'analytics' | 'team' | 'settings'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'events' | 'organizers' | 'venues' | 'queries' | 'past-events' | 'city-requests' | 'analytics' | 'team' | 'settings' | 'send-mail'>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -133,7 +136,21 @@ const App = () => {
   const [pastEventsList, setPastEventsList] = useState<any[]>([]);
   const [cityRequestsList, setCityRequestsList] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
+
+  // Send Mail state
+  const [mailTo, setMailTo] = useState('');
+  const [mailSubject, setMailSubject] = useState('');
+  const [mailContent, setMailContent] = useState('');
+  const [sendingMail, setSendingMail] = useState(false);
+  const [mailResult, setMailResult] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const [analyticsData, setAnalyticsData] = useState<any>(null);
+
+  const copyManageLink = (event: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!event.manageToken) { alert('No manage token available for this event.'); return; }
+    const url = `${FRONTEND_URL}/manage/${event._id}?manageToken=${event.manageToken}`;
+    navigator.clipboard.writeText(url).then(() => alert('Organizer dashboard link copied!')).catch(() => alert(url));
+  };
 
   const fetchDashboardData = async (isManual = false) => {
     if (isManual) setRefreshing(true);
@@ -206,12 +223,13 @@ const App = () => {
 
       const data = await res.json();
       const safeData = Array.isArray(data) ? data : [];
-      
-      if (view === 'events') setAllEvents(safeData);
+      const byDate = (arr: any[]) => [...arr].sort((a, b) => new Date(b.createdAt ?? b.date ?? 0).getTime() - new Date(a.createdAt ?? a.date ?? 0).getTime());
+
+      if (view === 'events') setAllEvents(byDate(safeData));
       else if (view === 'organizers') setOrganizersList(safeData);
       else if (view === 'venues') setVenuesList(safeData);
-      else if (view === 'queries') setQueriesList(safeData);
-      else if (view === 'past-events') setPastEventsList(safeData);
+      else if (view === 'queries') setQueriesList(byDate(safeData));
+      else if (view === 'past-events') setPastEventsList(byDate(safeData));
     } catch (error) {
       console.error(`Error fetching ${view} data:`, error);
       if (view === 'events') setAllEvents([]);
@@ -606,12 +624,14 @@ const App = () => {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event?.title || 'Unnamed Event'}</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
-                  {event?.organizer?.organizerName || 'Unknown'}{event?.city ? ` · ${event.city}` : ''}
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event?.organizer?.organizerName || 'Unknown'}{event?.city ? ` · ${event.city}` : ''}</span>
+                  {event?.organizer?.isVerified && <Check size={12} style={{ color: '#10b981', flexShrink: 0 }} />}
                 </div>
               </div>
-              <div style={{ flexShrink: 0 }}>
+              <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <StatusBadge status={event?.status || 'pending'} />
+                <button onClick={(e) => copyManageLink(event, e)} style={{ width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(99,102,241,0.1)', color: '#6366f1', border: 'none', cursor: 'pointer', flexShrink: 0 }} title="Copy organizer dashboard link"><Link size={14} /></button>
               </div>
             </div>
           ))}
@@ -659,17 +679,23 @@ const App = () => {
                     </div>
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>{event?.title || 'Unnamed Event'}</span>
                   </td>
-                  <td style={{ padding: '14px 20px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{event?.organizer?.organizerName || 'Unknown'}</td>
+                  <td style={{ padding: '14px 20px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {event?.organizer?.organizerName || 'Unknown'}
+                      {event?.organizer?.isVerified && <Check size={14} style={{ color: '#10b981', flexShrink: 0 }} />}
+                    </div>
+                  </td>
                   <td style={{ padding: '14px 20px' }}><span style={{ padding: '4px 10px', borderRadius: '20px', background: 'rgba(0,0,0,0.05)', fontSize: '0.75rem' }}>{event?.category || 'General'}</span></td>
                   <td style={{ padding: '14px 20px', fontSize: '0.85rem' }}>{event?.venue || 'No Venue'}, {event?.city || 'No City'}</td>
                   <td style={{ padding: '14px 20px' }}><StatusBadge status={event?.status || 'pending'} /></td>
                   <td style={{ padding: '14px 20px' }}>
-                    {event.status === 'pending' && (
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                      {event.status === 'pending' && (<>
                         <button onClick={(e) => { e.stopPropagation(); handleAction(event._id, 'creation', 'approved'); }} style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(16,185,129,0.1)', color: 'var(--success)', border: 'none', cursor: 'pointer' }} title="Approve"><Check size={16} /></button>
                         <button onClick={(e) => { e.stopPropagation(); handleAction(event._id, 'creation', 'rejected'); }} style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239,68,68,0.1)', color: 'var(--error)', border: 'none', cursor: 'pointer' }} title="Reject"><X size={16} /></button>
-                      </div>
-                    )}
+                      </>)}
+                      <button onClick={(e) => copyManageLink(event, e)} style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(99,102,241,0.1)', color: '#6366f1', border: 'none', cursor: 'pointer' }} title="Copy organizer dashboard link"><Link size={16} /></button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -1388,6 +1414,93 @@ const App = () => {
     );
   };
 
+  const handleSendMail = async () => {
+    if (!mailTo.trim() || !mailSubject.trim() || !mailContent.trim()) return;
+    setSendingMail(true); setMailResult(null);
+    try {
+      const res = await authFetch(`${API_BASE}/send-mail`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: mailTo.trim(), subject: mailSubject.trim(), content: mailContent.trim() }),
+      });
+      if (res.ok) {
+        setMailResult({ type: 'success', msg: `Email sent to ${mailTo}` });
+        setMailTo(''); setMailSubject(''); setMailContent('');
+        setTimeout(() => setMailResult(null), 3000);
+      } else {
+        const d = await res.json();
+        setMailResult({ type: 'error', msg: d.message || 'Failed to send email.' });
+      }
+    } catch { setMailResult({ type: 'error', msg: 'Network error. Please try again.' }); }
+    finally { setSendingMail(false); }
+  };
+
+  const renderSendMailView = () => (
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '24px', alignItems: 'start' }}>
+
+      {/* Compose form */}
+      <div className="glass-card" style={{ padding: isMobile ? '20px' : '28px', overflow: 'visible' }}>
+        <h3 style={{ margin: '0 0 20px', fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>Compose Email</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div>
+            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '5px' }}>To</label>
+            <input type="email" value={mailTo} onChange={e => setMailTo(e.target.value)} placeholder="recipient@example.com"
+              style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.88rem', outline: 'none' }} />
+          </div>
+          <div>
+            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '5px' }}>Subject</label>
+            <input type="text" value={mailSubject} onChange={e => setMailSubject(e.target.value)} placeholder="Email subject..."
+              style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.88rem', outline: 'none' }} />
+          </div>
+          <div>
+            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '5px' }}>Message</label>
+            <textarea value={mailContent} onChange={e => setMailContent(e.target.value)} placeholder="Write your message here..." rows={10}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.88rem', outline: 'none', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.6 }} />
+          </div>
+          {mailResult && (
+            <div style={{ padding: '10px 14px', borderRadius: '8px', background: mailResult.type === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${mailResult.type === 'success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, color: mailResult.type === 'success' ? '#10b981' : '#ef4444', fontSize: '0.84rem', fontWeight: 600 }}>
+              {mailResult.msg}
+            </div>
+          )}
+          <button onClick={handleSendMail} disabled={sendingMail || !mailTo.trim() || !mailSubject.trim() || !mailContent.trim()}
+            style={{ width: '100%', padding: '12px', borderRadius: '8px', border: 'none', background: 'var(--accent-primary)', color: '#fff', fontSize: '0.9rem', fontWeight: 700, cursor: sendingMail ? 'default' : 'pointer', opacity: sendingMail ? 0.7 : 1 }}>
+            {sendingMail ? 'Sending...' : 'Send Email'}
+          </button>
+        </div>
+      </div>
+
+      {/* Live preview */}
+      <div className="glass-card" style={{ padding: isMobile ? '20px' : '28px', overflow: 'visible' }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>Preview</h3>
+        <div style={{ background: '#f4f4f5', borderRadius: '12px', padding: '24px 16px', fontFamily: 'Arial, sans-serif' }}>
+          <div style={{ background: '#fff', borderRadius: '12px', padding: '28px 24px', border: '1px solid #e2e8f0', maxWidth: '480px', margin: '0 auto' }}>
+            {/* Logo */}
+            <img src="https://happenbe.com/happenbe_logo.png" alt="happenbe" style={{ height: '28px', width: 'auto', display: 'block', marginBottom: '20px' }} />
+            {/* Subject line */}
+            {mailSubject && (
+              <p style={{ margin: '0 0 16px', fontSize: '13px', fontWeight: 700, color: '#111827' }}>{mailSubject}</p>
+            )}
+            {/* Content */}
+            {mailContent ? (
+              mailContent.split('\n').map((line, i) =>
+                line.trim()
+                  ? <p key={i} style={{ margin: '0 0 12px', fontSize: '14px', color: '#374151', lineHeight: 1.7 }}>{line}</p>
+                  : <br key={i} />
+              )
+            ) : (
+              <p style={{ margin: 0, fontSize: '14px', color: '#cbd5e1', fontStyle: 'italic' }}>Your message will appear here...</p>
+            )}
+            {/* Divider + footer */}
+            <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '20px 0 14px' }} />
+            <p style={{ margin: '0 0 8px', fontSize: '11px', color: '#9ca3af' }}>You received this email from happenbe. For queries, reply to this email.</p>
+            <p style={{ margin: 0, fontSize: '11px', color: '#cbd5e1', textAlign: 'center' }}>© 2026 happenbe &nbsp;·&nbsp; Your city's cultural map</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  );
+
   const renderSettingsView = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {admin?.role === 'super_admin' && (
@@ -1647,6 +1760,7 @@ const App = () => {
       case 'team': return renderTeamView();
       case 'analytics': return renderAnalyticsView();
       case 'settings': return renderSettingsView();
+      case 'send-mail': return renderSendMailView();
       default: return (
         <div className="glass-card" style={{ padding: '60px', textAlign: 'center', color: 'var(--text-secondary)' }}>
           <p>The {currentView} module is currently being configured.</p>
@@ -1667,6 +1781,7 @@ const App = () => {
       case 'team': return { title: 'Team', desc: 'Manage admin accounts and access.' };
       case 'analytics': return { title: 'Analytics', desc: 'Growth trends, engagement and platform insights.' };
       case 'settings': return { title: 'Settings', desc: 'Manage your account and preferences.' };
+      case 'send-mail': return { title: 'Send Mail', desc: 'Send a custom email to any recipient using the happenbe template.' };
       default: return { title: 'Management Portal', desc: 'Admin control center.' };
     }
   };
@@ -1687,7 +1802,9 @@ const App = () => {
         <main style={{
           padding: isMobile ? 'var(--spacing-4)' : 'var(--spacing-8)',
           flex: 1,
-          background: 'var(--bg-primary)'
+          background: 'var(--bg-primary)',
+          overflowY: 'auto',
+          minHeight: 0,
         }}>
           <header style={{
             marginBottom: 'var(--spacing-6)',

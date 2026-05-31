@@ -41,7 +41,7 @@ const LoginPage = () => {
                     {/* Decorative blobs */}
                     <div style={{ position: 'absolute', width: '500px', height: '500px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(37,99,235,0.18) 0%, transparent 70%)', top: '-120px', left: '-120px', pointerEvents: 'none' }} />
                     <div style={{ position: 'absolute', width: '380px', height: '380px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.14) 0%, transparent 70%)', bottom: '60px', right: '-80px', pointerEvents: 'none' }} />
-                    <div style={{ position: 'absolute', width: '200px', height: '200px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(229,90,43,0.08) 0%, transparent 70%)', bottom: '200px', left: '40px', pointerEvents: 'none' }} />
+                    <div style={{ position: 'absolute', width: '200px', height: '200px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(254,53,8,0.08) 0%, transparent 70%)', bottom: '200px', left: '40px', pointerEvents: 'none' }} />
 
                     {/* Logo top-left */}
                     <div style={{ position: 'relative', zIndex: 1 }}>
@@ -50,14 +50,14 @@ const LoginPage = () => {
 
                     {/* Center content */}
                     <div style={{ position: 'relative', zIndex: 1 }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '5px 14px', borderRadius: '20px', background: 'rgba(229,90,43,0.12)', border: '1px solid rgba(229,90,43,0.25)', marginBottom: '32px' }}>
-                            <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#E55A2B', boxShadow: '0 0 8px rgba(229,90,43,0.8)', animation: 'pulse 2s infinite' }} />
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '5px 14px', borderRadius: '20px', background: 'rgba(254,53,8,0.12)', border: '1px solid rgba(254,53,8,0.25)', marginBottom: '32px' }}>
+                            <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#FE3508', boxShadow: '0 0 8px rgba(254,53,8,0.8)', animation: 'pulse 2s infinite' }} />
                             <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#f97316', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Admin Console</span>
                         </div>
 
                         <h1 style={{ fontSize: '3.2rem', fontWeight: 900, color: '#fff', lineHeight: 1.1, margin: '0 0 22px', letterSpacing: '-0.05em' }}>
                             Your city's<br />
-                            <span style={{ background: 'linear-gradient(135deg, #E55A2B 0%, #f97316 50%, #fb923c 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                            <span style={{ background: 'linear-gradient(135deg, #FE3508 0%, #f97316 50%, #fb923c 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                                 cultural map.
                             </span>
                         </h1>
@@ -108,8 +108,8 @@ const LoginPage = () => {
                 {isMobile && (
                     <div style={{ marginBottom: '40px', textAlign: 'center' }}>
                         <img src="/logo.png" alt="happenbe" style={{ height: '36px', width: 'auto', display: 'block', margin: '0 auto 16px' }} />
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '4px 12px', borderRadius: '20px', background: 'rgba(229,90,43,0.12)', border: '1px solid rgba(229,90,43,0.25)' }}>
-                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#E55A2B', boxShadow: '0 0 6px rgba(229,90,43,0.8)' }} />
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '4px 12px', borderRadius: '20px', background: 'rgba(254,53,8,0.12)', border: '1px solid rgba(254,53,8,0.25)' }}>
+                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#FE3508', boxShadow: '0 0 6px rgba(254,53,8,0.8)' }} />
                             <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#f97316', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Admin Console</span>
                         </div>
                     </div>
