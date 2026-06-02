@@ -20,7 +20,6 @@ import {
     Trash2,
     CalendarDays,
     Search,
-    Copy,
     Link
 } from 'lucide-react';
 
