@@ -333,7 +333,6 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
                                                 dateFormat="dd/MM/yyyy"
                                                 placeholderText="Select date range"
                                                 className={`admin-picker-input${eventData.date ? ' has-value' : ''}`}
-                                                minDate={new Date()}
                                                 showPopperArrow={false}
                                                 disabledKeyboardNavigation
                                             />
@@ -344,7 +343,6 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
                                                 dateFormat="dd/MM/yyyy"
                                                 placeholderText="Select date"
                                                 className={`admin-picker-input${eventData.date ? ' has-value' : ''}`}
-                                                minDate={new Date()}
                                                 showPopperArrow={false}
                                                 disabledKeyboardNavigation
                                             />

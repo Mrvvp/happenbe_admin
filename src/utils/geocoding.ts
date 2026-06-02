@@ -6,49 +6,43 @@ export interface Suggestion {
   city: string;
 }
 
+// Strip '/admin' suffix to get the base /api path
+const _rawBase = import.meta.env.VITE_API_BASE as string || 'http://localhost:5000/api/admin';
+const API_BASE = _rawBase.endsWith('/admin') ? _rawBase.slice(0, -6) : _rawBase;
+
 export const fetchSuggestions = async (query: string): Promise<Suggestion[]> => {
-  if (!query || query.length < 2) return [];
+  if (!query || query.length < 1) return [];
 
   try {
-    const viewbox = '74.85,12.80,77.40,8.20';
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=8&viewbox=${viewbox}&addressdetails=1&accept-language=en`,
-      { headers: { 'Accept-Language': 'en' } }
+    const url = `${API_BASE}/places/autocomplete?input=${encodeURIComponent(query)}&types=establishment|geocode`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Places request failed');
+    const data = await response.json();
+
+    if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+      throw new Error(data.error_message || data.status);
+    }
+
+    const predictions: any[] = data.predictions || [];
+
+    const suggestions = await Promise.all(
+      predictions.slice(0, 6).map(async (p: any) => {
+        const name: string = p.structured_formatting?.main_text || p.description.split(',')[0];
+        const secondary: string = p.structured_formatting?.secondary_text || '';
+        const city: string = secondary.split(',')[0]?.trim() || '';
+        try {
+          const dr = await fetch(`${API_BASE}/places/details?place_id=${p.place_id}`);
+          const dd = await dr.json();
+          const loc = dd.result?.geometry?.location;
+          if (loc) return { name, city, lat: loc.lat as number, lng: loc.lng as number, fullName: p.description };
+        } catch { /* silent */ }
+        return null;
+      })
     );
 
-    if (!response.ok) throw new Error('Suggestions request failed');
-
-    const isLatin = (str: string) => /^[ -ɏ\s\d.,()'\-/&]+$/.test(str);
-
-    const data = await response.json();
-    return data
-      .map((item: any) => {
-        const firstName = item.display_name.split(',')[0].trim();
-        const name = item.namedetails?.['name:en'] || firstName;
-        const a = item.address || {};
-
-        let city: string = a.city || a.town || a.municipality || '';
-
-        if (!city) {
-          const dn: string = item.display_name || '';
-          if (/kozhikode/i.test(dn) || /calicut/i.test(dn)) city = 'Kozhikode';
-        }
-
-        if (!city) {
-          city = a.city_district || a.district || a.county || '';
-        }
-
-        return {
-          name,
-          fullName: item.display_name,
-          lat: parseFloat(item.lat),
-          lng: parseFloat(item.lon),
-          city
-        };
-      })
-      .filter((s: Suggestion) => isLatin(s.name));
+    return suggestions.filter(Boolean) as Suggestion[];
   } catch (error) {
-    console.error('Suggestions error:', error);
+    console.error('Google Places error:', error);
     return [];
   }
 };
