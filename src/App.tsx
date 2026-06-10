@@ -20,7 +20,9 @@ import {
     Trash2,
     CalendarDays,
     Search,
-    Link
+    Link,
+    Edit3,
+    Save
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api/admin';
@@ -114,6 +116,41 @@ const App = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<{ id: string, type: any } | null>(null);
+  const [editingEvent, setEditingEvent] = useState<any | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  const handleSaveEventEdit = async () => {
+    if (!editingEvent) return;
+    setEditSaving(true); setEditError('');
+    try {
+      const res = await authFetch(`${API_BASE}/events/${editingEvent._id}/edit`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editingEvent.title,
+          date: editingEvent.date,
+          endDate: editingEvent.endDate,
+          startTime: editingEvent.startTime,
+          endTime: editingEvent.endTime,
+          venue: editingEvent.venue,
+          city: editingEvent.city,
+          description: editingEvent.description,
+          bookingType: editingEvent.bookingType,
+          websiteLink: editingEvent.websiteLink,
+          whatsappLink: editingEvent.whatsappLink,
+          status: editingEvent.status,
+          guests: editingEvent.guests,
+          termsAndConditions: editingEvent.termsAndConditions,
+          organizer: editingEvent.organizer,
+        }),
+      });
+      if (!res.ok) { const d = await res.json(); setEditError(d.message || 'Save failed.'); return; }
+      setEditingEvent(null);
+      fetchViewData('events');
+    } catch { setEditError('Network error.'); }
+    finally { setEditSaving(false); }
+  };
   const [activeTab, setActiveTab] = useState<'creation' | 'claim' | 'edit' | 'remove'>('creation');
   const [currentView, setCurrentView] = useState<'dashboard' | 'events' | 'organizers' | 'venues' | 'queries' | 'past-events' | 'city-requests' | 'analytics' | 'team' | 'settings' | 'send-mail'>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -693,6 +730,7 @@ const App = () => {
                         <button onClick={(e) => { e.stopPropagation(); handleAction(event._id, 'creation', 'approved'); }} style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(16,185,129,0.1)', color: 'var(--success)', border: 'none', cursor: 'pointer' }} title="Approve"><Check size={16} /></button>
                         <button onClick={(e) => { e.stopPropagation(); handleAction(event._id, 'creation', 'rejected'); }} style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239,68,68,0.1)', color: 'var(--error)', border: 'none', cursor: 'pointer' }} title="Reject"><X size={16} /></button>
                       </>)}
+                      <button onClick={(e) => { e.stopPropagation(); setEditingEvent({ ...event }); }} style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: 'none', cursor: 'pointer' }} title="Edit event"><Edit3 size={16} /></button>
                       <button onClick={(e) => copyManageLink(event, e)} style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(99,102,241,0.1)', color: '#6366f1', border: 'none', cursor: 'pointer' }} title="Copy organizer dashboard link"><Link size={16} /></button>
                     </div>
                   </td>
@@ -1878,6 +1916,108 @@ const App = () => {
         onAction={handleAction}
       />
       <AdminDetailModal />
+
+      {/* Event Edit Modal */}
+      {editingEvent && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+          onClick={() => setEditingEvent(null)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-primary)', borderRadius: '20px', border: '1px solid var(--border-color)', padding: isMobile ? '20px' : '28px 32px', width: '100%', maxWidth: '640px', maxHeight: '90vh', overflowY: 'auto', fontFamily: 'inherit' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>Edit Event</h3>
+              <button onClick={() => setEditingEvent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={20} /></button>
+            </div>
+            {/* Section helper */}
+            {(() => {
+              const inputStyle: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.88rem', fontFamily: 'inherit', outline: 'none' };
+              const labelStyle: React.CSSProperties = { fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '5px' };
+              const sectionTitle = (title: string) => <div style={{ gridColumn: 'span 2', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px', marginTop: '8px', fontSize: '0.78rem', fontWeight: 800, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{title}</div>;
+              const field = (key: string, label: string, full = false, type = 'text') => (
+                <div key={key} style={{ gridColumn: full ? 'span 2' : 'span 1' }}>
+                  <label style={labelStyle}>{label}</label>
+                  <input type={type} value={(editingEvent as any)[key] || ''} onChange={e => setEditingEvent((prev: any) => ({ ...prev, [key]: e.target.value }))} style={inputStyle} />
+                </div>
+              );
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
+                  {sectionTitle('Event Details')}
+                  {field('title', 'Title', true)}
+                  {field('date', 'Date', false, 'date')}
+                  {field('endDate', 'End Date (multi-day)', false, 'date')}
+                  {field('startTime', 'Start Time')}
+                  {field('endTime', 'End Time')}
+                  {field('venue', 'Venue')}
+                  {field('city', 'City')}
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <label style={labelStyle}>Description</label>
+                    <textarea value={editingEvent.description || ''} onChange={e => setEditingEvent((prev: any) => ({ ...prev, description: e.target.value }))} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+                  </div>
+
+                  {sectionTitle('Organizer')}
+                  {[
+                    ['organizerName','Organizer Name'], ['organizerContact','Contact Email'],
+                    ['organizerWhatsApp','WhatsApp'], ['organizerPhone','Phone'],
+                    ['organizerWebsite','Website'], ['organizerInstagram','Instagram'],
+                  ].map(([k, l]) => (
+                    <div key={k}>
+                      <label style={labelStyle}>{l}</label>
+                      <input value={editingEvent.organizer?.[k] || ''} onChange={e => setEditingEvent((prev: any) => ({ ...prev, organizer: { ...prev.organizer, [k]: e.target.value } }))} style={inputStyle} />
+                    </div>
+                  ))}
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <label style={labelStyle}>Organizer Bio</label>
+                    <textarea value={editingEvent.organizer?.organizerBio || ''} onChange={e => setEditingEvent((prev: any) => ({ ...prev, organizer: { ...prev.organizer, organizerBio: e.target.value } }))} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+                  </div>
+
+                  {sectionTitle('Booking')}
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <label style={labelStyle}>Booking Type</label>
+                    <select value={editingEvent.bookingType || 'whatsapp'} onChange={e => setEditingEvent((prev: any) => ({ ...prev, bookingType: e.target.value }))} style={inputStyle}>
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="website">Website/Instagram</option>
+                      <option value="open">Open Event</option>
+                    </select>
+                  </div>
+                  {field('websiteLink', 'Website/Instagram Link', false)}
+                  {field('whatsappLink', 'WhatsApp Link', false)}
+
+                  {sectionTitle('Guests & Guidelines')}
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <label style={labelStyle}>Guests / Performers (comma separated)</label>
+                    <input value={Array.isArray(editingEvent.guests) ? editingEvent.guests.join(', ') : (editingEvent.guests || '')}
+                      onChange={e => setEditingEvent((prev: any) => ({ ...prev, guests: e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean) }))}
+                      style={inputStyle} placeholder="Guest 1, Guest 2..." />
+                  </div>
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <label style={labelStyle}>Event Guidelines (one per line)</label>
+                    <textarea value={Array.isArray(editingEvent.termsAndConditions) ? editingEvent.termsAndConditions.join('\n') : (editingEvent.termsAndConditions || '')}
+                      onChange={e => setEditingEvent((prev: any) => ({ ...prev, termsAndConditions: e.target.value.split('\n').map((s: string) => s.trim()).filter(Boolean) }))}
+                      rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+                  </div>
+
+                  {sectionTitle('Status')}
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <label style={labelStyle}>Event Status</label>
+                    <select value={editingEvent.status || 'pending'} onChange={e => setEditingEvent((prev: any) => ({ ...prev, status: e.target.value }))} style={inputStyle}>
+                      <option value="pending">Pending</option>
+                      <option value="approved">Approved</option>
+                      <option value="rejected">Rejected</option>
+                      <option value="expired">Expired</option>
+                    </select>
+                  </div>
+                </div>
+              );
+            })()}
+            {editError && <p style={{ color: 'var(--error)', fontSize: '0.82rem', margin: '12px 0 0' }}>{editError}</p>}
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px', justifyContent: 'flex-end' }}>
+              <button onClick={() => setEditingEvent(null)} style={{ padding: '10px 20px', borderRadius: '10px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.88rem' }}>Cancel</button>
+              <button onClick={handleSaveEventEdit} disabled={editSaving}
+                style={{ padding: '10px 24px', borderRadius: '10px', border: 'none', background: 'var(--accent-primary)', color: '#fff', fontWeight: 700, cursor: editSaving ? 'default' : 'pointer', fontFamily: 'inherit', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '6px', opacity: editSaving ? 0.7 : 1 }}>
+                <Save size={14} />{editSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

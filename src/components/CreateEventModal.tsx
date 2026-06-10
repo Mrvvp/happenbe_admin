@@ -18,6 +18,7 @@ const STEPS = [
     { id: 1, label: 'Details' },
     { id: 2, label: 'Organizer' },
     { id: 3, label: 'Media' },
+    { id: 4, label: 'Booking' },
 ];
 
 // ── Shared style constants ─────────────────────────────────────────────────
@@ -106,6 +107,10 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
         venue: '', city: '', description: '',
         guests: [] as string[], termsAndConditions: [] as string[],
         organizerName: '', organizerContact: '',
+        organizerWebsite: '', organizerWhatsApp: '', organizerPhone: '',
+        organizerInstagram: '', organizerBio: '',
+        bookingType: 'whatsapp' as string,
+        websiteLink: '', whatsappLink: '',
         lat: '', lng: '',
     });
 
@@ -114,11 +119,16 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
     const canContinue = () => {
         if (currentStep === 1) {
             const base = eventData.title && eventData.date && eventData.startTime &&
-                eventData.endTime && eventData.venue && eventData.city && eventData.description;
+                eventData.venue && eventData.city;
             return eventData.isMultiDay ? !!(base && eventData.endDate) : !!base;
         }
         if (currentStep === 2) return !!eventData.organizerName;
         if (currentStep === 3) return files.images.length > 0;
+        if (currentStep === 4) {
+            if (eventData.bookingType === 'whatsapp') return !!eventData.whatsappLink || !!eventData.organizerWhatsApp;
+            if (eventData.bookingType === 'website') return !!eventData.websiteLink || !!eventData.organizerWebsite;
+            return true;
+        }
         return true;
     };
 
@@ -207,7 +217,7 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
     };
 
     const resetForm = () => {
-        setEventData({ title: '', date: '', endDate: '', isMultiDay: false, startTime: '', endTime: '', venue: '', city: '', description: '', guests: [], termsAndConditions: [], organizerName: '', organizerContact: '', lat: '', lng: '' });
+        setEventData({ title: '', date: '', endDate: '', isMultiDay: false, startTime: '', endTime: '', venue: '', city: '', description: '', guests: [], termsAndConditions: [], organizerName: '', organizerContact: '', organizerWebsite: '', organizerWhatsApp: '', organizerPhone: '', organizerInstagram: '', organizerBio: '', bookingType: 'whatsapp', websiteLink: '', whatsappLink: '', lat: '', lng: '' });
         setFiles({ images: [], video: null }); setImagePreviews([]); setVideoPreview(null);
         setCurrentStep(1); setGuestInput(''); setTermInput('');
     };
@@ -493,21 +503,35 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
                         {currentStep === 2 && (
                             <motion.div key="s2" initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
                                 <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 4px', background: 'linear-gradient(135deg, #1a1a1a 0%, #555 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.02em' }}>Organizer Info</h3>
-                                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 26px', lineHeight: 1.5 }}>WhatsApp, website, Instagram & booking are filled by the organizer after claiming.</p>
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 26px', lineHeight: 1.5 }}>Fill in all known organizer details.</p>
                                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '14px' : '20px' }}>
                                     <div style={fieldBase}>
                                         <label style={labelBase}>Organizer / Company <span style={{ color: 'var(--accent-primary)' }}>*</span></label>
                                         <input style={inputBase} name="organizerName" value={eventData.organizerName} onChange={handleText} placeholder="Organizer or company name" onFocus={focusOrange} onBlur={blurField} />
                                     </div>
                                     <div style={fieldBase}>
-                                        <label style={labelBase}>
-                                            Contact Email
-                                            <span style={{ fontSize: '0.68rem', fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)', marginLeft: '3px' }}>(for discovery email)</span>
-                                        </label>
+                                        <label style={labelBase}>Contact Email</label>
                                         <input type="email" style={inputBase} name="organizerContact" value={eventData.organizerContact} onChange={handleText} placeholder="organizer@email.com" onFocus={focusOrange} onBlur={blurField} />
                                     </div>
-                                    <div style={{ gridColumn: isMobile ? 'span 1' : 'span 2', padding: '14px 18px', background: 'rgba(37,99,235,0.05)', border: '1px solid rgba(37,99,235,0.18)', borderLeft: '3px solid var(--accent-primary)', borderRadius: '12px', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.65 }}>
-                                        After the organizer <strong style={{ color: 'var(--accent-primary)' }}>claims this event</strong>, they fill in WhatsApp, website, Instagram, and booking method — which grants the verified badge.
+                                    <div style={fieldBase}>
+                                        <label style={labelBase}>WhatsApp Number</label>
+                                        <input style={inputBase} name="organizerWhatsApp" value={eventData.organizerWhatsApp} onChange={handleText} placeholder="10-digit number" onFocus={focusOrange} onBlur={blurField} />
+                                    </div>
+                                    <div style={fieldBase}>
+                                        <label style={labelBase}>Phone</label>
+                                        <input style={inputBase} name="organizerPhone" value={eventData.organizerPhone} onChange={handleText} placeholder="Phone number" onFocus={focusOrange} onBlur={blurField} />
+                                    </div>
+                                    <div style={fieldBase}>
+                                        <label style={labelBase}>Website</label>
+                                        <input style={inputBase} name="organizerWebsite" value={eventData.organizerWebsite} onChange={handleText} placeholder="https://..." onFocus={focusOrange} onBlur={blurField} />
+                                    </div>
+                                    <div style={fieldBase}>
+                                        <label style={labelBase}>Instagram</label>
+                                        <input style={inputBase} name="organizerInstagram" value={eventData.organizerInstagram} onChange={handleText} placeholder="@handle or URL" onFocus={focusOrange} onBlur={blurField} />
+                                    </div>
+                                    <div style={{ ...fieldBase, gridColumn: isMobile ? 'span 1' : 'span 2' }}>
+                                        <label style={labelBase}>Organizer Bio</label>
+                                        <textarea style={{ ...inputBase, minHeight: '72px', resize: 'vertical' }} name="organizerBio" value={eventData.organizerBio} onChange={handleText} placeholder="Short bio about the organizer..." onFocus={focusOrange} onBlur={blurField} />
                                     </div>
                                 </div>
                             </motion.div>
@@ -566,6 +590,58 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
                                             </label>
                                         )}
                                     </div>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* STEP 4 — Booking */}
+                        {currentStep === 4 && (
+                            <motion.div key="s4" initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
+                                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 4px', background: 'linear-gradient(135deg, #1a1a1a 0%, #555 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.02em' }}>Booking Method</h3>
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 26px', lineHeight: 1.5 }}>How should attendees book for this event?</p>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
+                                    <div style={fieldBase}>
+                                        <label style={labelBase}>Booking Type</label>
+                                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                            {[
+                                                { value: 'whatsapp', label: '📱 WhatsApp' },
+                                                { value: 'website', label: '🌐 Website/Instagram' },
+                                                { value: 'open', label: '🎟 Open Event' },
+                                            ].map(opt => (
+                                                <button key={opt.value} type="button" onClick={() => setEventData(p => ({ ...p, bookingType: opt.value }))}
+                                                    style={{ padding: '10px 18px', borderRadius: '10px', border: `2px solid ${eventData.bookingType === opt.value ? 'var(--accent-primary)' : 'var(--border-color)'}`, background: eventData.bookingType === opt.value ? 'rgba(37,99,235,0.08)' : 'transparent', color: eventData.bookingType === opt.value ? 'var(--accent-primary)' : 'var(--text-secondary)', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer', fontFamily: 'inherit', transition: '0.15s' }}>
+                                                    {opt.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    {eventData.bookingType === 'whatsapp' && (
+                                        <div style={fieldBase}>
+                                            <label style={labelBase}>WhatsApp Number / Link</label>
+                                            <input style={inputBase} name="whatsappLink" value={eventData.whatsappLink} onChange={handleText} placeholder="https://wa.me/91XXXXXXXXXX or 10-digit number" onFocus={focusOrange} onBlur={blurField} />
+                                            {eventData.organizerWhatsApp && !eventData.whatsappLink && (
+                                                <div style={{ marginTop: '6px', fontSize: '0.78rem', color: 'var(--accent-primary)', cursor: 'pointer', fontWeight: 600 }} onClick={() => setEventData(p => ({ ...p, whatsappLink: `https://wa.me/${p.organizerWhatsApp.replace(/\D/g, '')}` }))}>
+                                                    ↗ Use organizer WhatsApp: {eventData.organizerWhatsApp}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    {eventData.bookingType === 'website' && (
+                                        <div style={fieldBase}>
+                                            <label style={labelBase}>Website / Instagram URL</label>
+                                            <input style={inputBase} name="websiteLink" value={eventData.websiteLink} onChange={handleText} placeholder="https://..." onFocus={focusOrange} onBlur={blurField} />
+                                            {eventData.organizerWebsite && !eventData.websiteLink && (
+                                                <div style={{ marginTop: '6px', fontSize: '0.78rem', color: 'var(--accent-primary)', cursor: 'pointer', fontWeight: 600 }} onClick={() => setEventData(p => ({ ...p, websiteLink: p.organizerWebsite }))}>
+                                                    ↗ Use organizer website: {eventData.organizerWebsite}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    {eventData.bookingType === 'open' && (
+                                        <div style={{ padding: '14px 18px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '12px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                                            ✅ Open event — no ticket or booking required. Attendees just show up.
+                                        </div>
+                                    )}
                                 </div>
                             </motion.div>
                         )}
