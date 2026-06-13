@@ -166,6 +166,9 @@ const App = () => {
 
   // Data for additional views
   const [allEvents, setAllEvents] = useState<any[]>([]);
+  const [eventsFilter, setEventsFilter] = useState<'all' | 'approved' | 'pending' | 'rejected' | 'expired'>('all');
+  const [eventsEventFilter, setEventsEventFilter] = useState<string>('');
+  const [eventsOrgFilter, setEventsOrgFilter] = useState<string>('');
   const [organizersList, setOrganizersList] = useState<any[]>([]);
   const [venuesList, setVenuesList] = useState<any[]>([]);
   const [queriesList, setQueriesList] = useState<any[]>([]);
@@ -618,16 +621,75 @@ const App = () => {
     </>
   );
 
-  const renderEventsView = () => (
+  const renderEventsView = () => {
+    const filterOptions: { key: typeof eventsFilter; label: string; color: string }[] = [
+      { key: 'all', label: 'All', color: 'var(--text-secondary)' },
+      { key: 'approved', label: 'Approved', color: 'var(--success)' },
+      { key: 'pending', label: 'Pending', color: 'var(--warning)' },
+      { key: 'rejected', label: 'Rejected', color: 'var(--error)' },
+      { key: 'expired', label: 'Expired', color: 'var(--text-muted)' },
+    ];
+    const uniqueEventTitles = Array.from(new Set(allEvents.map(e => e.title).filter(Boolean))).sort();
+    const uniqueOrganizers = Array.from(new Set(allEvents.map(e => e.organizer?.organizerName).filter(Boolean))).sort();
+    const filteredEvents = allEvents.filter(e => {
+      const matchesStatus = eventsFilter === 'all' || (e.status || 'pending') === eventsFilter;
+      const matchesEventName = !eventsEventFilter || e.title === eventsEventFilter;
+      const matchesOrg = !eventsOrgFilter || e.organizer?.organizerName === eventsOrgFilter;
+      const matchesSearch =
+        !searchTerm ||
+        (e.title?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (e.city?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (e.venue?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (e.organizer?.organizerName?.toLowerCase().includes(searchTerm.toLowerCase()));
+      return matchesStatus && matchesEventName && matchesOrg && matchesSearch;
+    });
+    const selectStyle: React.CSSProperties = {
+      padding: '6px 28px 6px 10px', borderRadius: '8px', border: '1px solid var(--border-color)',
+      background: 'var(--bg-secondary)', color: 'var(--text-secondary)', fontSize: '0.8rem',
+      fontWeight: 500, cursor: 'pointer', outline: 'none', appearance: 'none' as any,
+      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
+      backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center',
+    };
+    return (
     <div className="glass-card list-card" style={{ padding: 0, overflow: 'hidden' }}>
-      <div className="section-header">
-        <div>
-          <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Full Events Directory</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '4px 0 0' }}>Browse and manage all approved events on the platform.</p>
+      <div className="section-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <div>
+            <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Full Events Directory</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '4px 0 0' }}>Browse and manage all approved events on the platform.</p>
+          </div>
+          <div className="search-box">
+            <Search size={15} color="var(--text-muted)" />
+            <input type="text" placeholder="Search events..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+          </div>
         </div>
-        <div className="search-box">
-          <Search size={15} color="var(--text-muted)" />
-          <input type="text" placeholder="Search events..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {filterOptions.map(f => {
+            const count = f.key === 'all' ? allEvents.length : allEvents.filter(e => (e.status || 'pending') === f.key).length;
+            const isActive = eventsFilter === f.key;
+            return (
+              <button key={f.key} onClick={() => setEventsFilter(f.key)}
+                style={{ padding: '5px 14px', borderRadius: '20px', border: `1px solid ${isActive ? f.color : 'var(--border-color)'}`, background: isActive ? `${f.color}18` : 'transparent', color: isActive ? f.color : 'var(--text-muted)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s' }}>
+                {f.label}
+                <span style={{ background: isActive ? f.color : 'var(--bg-tertiary)', color: isActive ? '#fff' : 'var(--text-muted)', borderRadius: '10px', padding: '0 6px', fontSize: '0.7rem', fontWeight: 700 }}>{count}</span>
+              </button>
+            );
+          })}
+          <div style={{ width: '1px', height: '20px', background: 'var(--border-color)', margin: '0 4px' }} />
+          <select value={eventsEventFilter} onChange={e => setEventsEventFilter(e.target.value)} style={selectStyle}>
+            <option value="">All Events</option>
+            {uniqueEventTitles.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <select value={eventsOrgFilter} onChange={e => setEventsOrgFilter(e.target.value)} style={selectStyle}>
+            <option value="">All Organizers</option>
+            {uniqueOrganizers.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+          {(eventsEventFilter || eventsOrgFilter) && (
+            <button onClick={() => { setEventsEventFilter(''); setEventsOrgFilter(''); }}
+              style={{ padding: '5px 10px', borderRadius: '20px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-muted)', fontSize: '0.75rem', cursor: 'pointer' }}>
+              Clear
+            </button>
+          )}
         </div>
       </div>
       {isMobile ? (
@@ -635,19 +697,11 @@ const App = () => {
         <div>
           {loading ? (
             <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading events...</div>
-          ) : allEvents.filter(e =>
-              (e.title?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-              (e.city?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-              (e.organizer?.organizerName?.toLowerCase().includes(searchTerm.toLowerCase()))
-            ).length === 0 ? (
+          ) : filteredEvents.length === 0 ? (
             <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
-              {searchTerm ? 'No matches found.' : 'No events found.'}
+              {searchTerm || eventsFilter !== 'all' ? 'No matches found.' : 'No events found.'}
             </div>
-          ) : allEvents.filter(e =>
-              (e.title?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-              (e.city?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-              (e.organizer?.organizerName?.toLowerCase().includes(searchTerm.toLowerCase()))
-            ).map((event) => (
+          ) : filteredEvents.map((event) => (
             <div
               key={event._id}
               onClick={() => { setSelectedRequest({ id: event._id, type: 'creation' }); setIsViewModalOpen(true); }}
@@ -689,19 +743,9 @@ const App = () => {
             <tbody>
               {loading ? (
                 <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading events...</td></tr>
-              ) : allEvents.filter(e =>
-                  (e.title?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                  (e.city?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                  (e.venue?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                  (e.organizer?.organizerName?.toLowerCase().includes(searchTerm.toLowerCase()))
-                ).length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches found.' : 'No events found.'}</td></tr>
-              ) : allEvents.filter(e =>
-                  (e.title?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                  (e.city?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                  (e.venue?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                  (e.organizer?.organizerName?.toLowerCase().includes(searchTerm.toLowerCase()))
-                ).map((event) => (
+              ) : filteredEvents.length === 0 ? (
+                <tr><td colSpan={6} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm || eventsFilter !== 'all' ? 'No matches found.' : 'No events found.'}</td></tr>
+              ) : filteredEvents.map((event) => (
                 <tr
                   key={event._id}
                   onClick={() => { setSelectedRequest({ id: event._id, type: 'creation' }); setIsViewModalOpen(true); }}
@@ -741,7 +785,8 @@ const App = () => {
         </div>
       )}
     </div>
-  );
+    );
+  };
 
   const renderOrganizersView = () => {
     const filtered = organizersList.filter(o => o._id?.toLowerCase().includes(searchTerm.toLowerCase()));

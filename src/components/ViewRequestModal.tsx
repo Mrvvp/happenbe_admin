@@ -14,12 +14,16 @@ interface ViewRequestModalProps {
     onAction: (id: string, type: any, action: 'approved' | 'rejected') => Promise<void>;
 }
 
+const API_EVENTS_BASE = import.meta.env.VITE_API_BASE?.replace('/admin', '') || 'http://localhost:5000/api';
+
 const ViewRequestModal = ({ isOpen, onClose, requestId, requestType, onAction }: ViewRequestModalProps) => {
     const { token } = useAuth();
     const authFetch = (url: string) => fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [viewers, setViewers] = useState<any[]>([]);
+    const [viewersLoading, setViewersLoading] = useState(false);
 
     useEffect(() => {
         if (isOpen && requestId && requestType) {
@@ -27,8 +31,22 @@ const ViewRequestModal = ({ isOpen, onClose, requestId, requestType, onAction }:
         } else if (!isOpen) {
             setData(null);
             setError(null);
+            setViewers([]);
         }
     }, [isOpen, requestId, requestType]);
+
+    useEffect(() => {
+        if (isOpen && requestId && requestType === 'creation' && token) {
+            setViewersLoading(true);
+            fetch(`${API_EVENTS_BASE}/events/${requestId}/viewers`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+                .then(r => r.ok ? r.json() : [])
+                .then(d => setViewers(Array.isArray(d) ? d : []))
+                .catch(() => setViewers([]))
+                .finally(() => setViewersLoading(false));
+        }
+    }, [isOpen, requestId, requestType, token]);
 
     const fetchDetails = async () => {
         setLoading(true);
@@ -641,7 +659,34 @@ const ViewRequestModal = ({ isOpen, onClose, requestId, requestType, onAction }:
                                         </div>
                                     </section>
 
-                                    {/* 6. Video Preview */}
+                                    {/* 6. Viewers */}
+                                    <section style={{ borderTop: '1px solid var(--border-color)', paddingTop: '24px' }}>
+                                        <label style={{ ...labelStyle, marginBottom: '14px' }}>
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: '6px' }}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                            Viewers ({viewers.length})
+                                        </label>
+                                        {viewersLoading ? (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                                <Loader2 size={14} className="refresh-spinner" /> Loading viewers...
+                                            </div>
+                                        ) : viewers.length === 0 ? (
+                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No views recorded yet.</p>
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
+                                                {viewers.slice().reverse().map((v: any, i: number) => (
+                                                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: 'var(--bg-tertiary)', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                                                        <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: v.name === 'Guest' ? 'rgba(100,116,139,0.1)' : 'rgba(37,99,235,0.08)', border: `1px solid ${v.name === 'Guest' ? 'var(--border-color)' : 'rgba(37,99,235,0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={v.name === 'Guest' ? 'var(--text-muted)' : 'var(--accent-primary)'} strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                                        </div>
+                                                        <span style={{ flex: 1, fontSize: '0.85rem', fontWeight: v.name === 'Guest' ? 400 : 600, color: v.name === 'Guest' ? 'var(--text-muted)' : 'var(--text-primary)' }}>{v.name}</span>
+                                                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flexShrink: 0 }}>{v.viewedAt ? new Date(v.viewedAt).toLocaleString() : ''}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </section>
+
+                                    {/* 7. Video Preview */}
                                     {data.video && (
                                         <section>
                                             <label style={labelStyle}><Video size={14} style={{ marginRight: '6px' }} /> Promotional Video</label>

@@ -385,7 +385,7 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
 
                                     {/* End Time */}
                                     <div style={fieldBase}>
-                                        <label style={labelBase}>Ends At <span style={{ color: 'var(--accent-primary)' }}>*</span></label>
+                                        <label style={labelBase}>Ends At <span style={{ fontSize: '0.7rem', fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)', marginLeft: '2px' }}>(optional)</span></label>
                                         <DatePicker
                                             selected={eventData.endTime ? new Date(`2000-01-01T${eventData.endTime}`) : null}
                                             onChange={(date: Date | null) => {
@@ -657,7 +657,7 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
                             {currentStep > 1 ? '← Back' : 'Cancel'}
                         </button>
 
-                        {currentStep < 3 ? (
+                        {currentStep < STEPS.length ? (
                             <button type="button" disabled={!canContinue()} onClick={() => setCurrentStep(s => s + 1)}
                                 style={{ padding: '11px 30px', borderRadius: '14px', fontWeight: 700, fontSize: '0.93rem', border: 'none', background: canContinue() ? 'var(--accent-gradient)' : 'rgba(0,0,0,0.08)', color: canContinue() ? '#fff' : 'rgba(0,0,0,0.3)', cursor: canContinue() ? 'pointer' : 'not-allowed', boxShadow: canContinue() ? '0 8px 20px rgba(37,99,235,0.22)' : 'none', transition: 'all 0.22s' }}
                                 onMouseEnter={e => { if (canContinue()) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 24px rgba(37,99,235,0.3)'; } }}
