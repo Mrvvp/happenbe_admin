@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid, Legend } from 'recharts';
 import Sidebar from './layout/Sidebar';
 import Navbar from './layout/Navbar';
@@ -23,7 +23,8 @@ import {
     Link,
     Edit3,
     Save,
-    Download
+    Download,
+    Upload
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api/admin';
@@ -120,6 +121,10 @@ const App = () => {
   const [editingEvent, setEditingEvent] = useState<any | null>(null);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
+  const [mediaUpdating, setMediaUpdating] = useState(false);
+  const [mediaError, setMediaError] = useState('');
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   const handleSaveEventEdit = async () => {
     if (!editingEvent) return;
@@ -169,6 +174,22 @@ const App = () => {
     } catch (err) {
       console.error('Download failed', err);
     }
+  };
+
+  const updateMedia = async (formData: FormData) => {
+    if (!editingEvent) return;
+    setMediaUpdating(true);
+    setMediaError('');
+    try {
+      const res = await authFetch(`${API_BASE}/events/${editingEvent._id}/media`, {
+        method: 'PUT',
+        body: formData,
+      });
+      if (!res.ok) { const d = await res.json(); setMediaError(d.message || 'Update failed.'); return; }
+      const data = await res.json();
+      setEditingEvent((prev: any) => ({ ...prev, image: data.image, video: data.video }));
+    } catch { setMediaError('Network error.'); }
+    finally { setMediaUpdating(false); }
   };
 
   const [activeTab, setActiveTab] = useState<'creation' | 'claim' | 'edit' | 'remove'>('creation');
@@ -2063,18 +2084,45 @@ const App = () => {
 
                   {sectionTitle('Media')}
                   <div style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {mediaError && <p style={{ color: '#e05c5c', fontSize: '0.8rem', margin: 0 }}>{mediaError}</p>}
                     {/* Main image */}
-                    {editingEvent.image && (
-                      <div>
-                        <label style={labelStyle}>Main Image</label>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <div>
+                      <label style={labelStyle}>Main Image</label>
+                      <input type="file" accept="image/*" ref={imageInputRef} style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const fd = new FormData();
+                          fd.append('images', file);
+                          updateMedia(fd);
+                          e.target.value = '';
+                        }} />
+                      {editingEvent.image ? (
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
                           <img src={mediaUrl(editingEvent.image)} alt="" style={{ width: '120px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-color)', flexShrink: 0 }} />
-                          <button style={dlBtnStyle} onClick={() => downloadFile(editingEvent.image, `image.${editingEvent.image.split('.').pop() || 'jpg'}`)}>
-                            <Download size={13} /> Download
-                          </button>
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                            <button style={dlBtnStyle} onClick={() => downloadFile(editingEvent.image, `image.${editingEvent.image.split('.').pop() || 'jpg'}`)}>
+                              <Download size={13} /> Download
+                            </button>
+                            <button style={dlBtnStyle} disabled={mediaUpdating} onClick={() => imageInputRef.current?.click()}>
+                              <Upload size={13} /> Change
+                            </button>
+                            <button style={{ ...dlBtnStyle, color: '#e05c5c', borderColor: 'rgba(224,92,92,0.35)' }} disabled={mediaUpdating} onClick={() => {
+                              if (!window.confirm('Remove main image?')) return;
+                              const fd = new FormData();
+                              fd.append('removeImage', 'true');
+                              updateMedia(fd);
+                            }}>
+                              <Trash2 size={13} /> Remove
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      ) : (
+                        <button style={dlBtnStyle} disabled={mediaUpdating} onClick={() => imageInputRef.current?.click()}>
+                          <Upload size={13} /> Upload Image
+                        </button>
+                      )}
+                    </div>
                     {/* Additional images */}
                     {editingEvent.images?.length > 0 && (
                       <div>
@@ -2092,15 +2140,43 @@ const App = () => {
                       </div>
                     )}
                     {/* Video */}
-                    {editingEvent.video && (
-                      <div>
-                        <label style={labelStyle}>Video</label>
-                        <video src={mediaUrl(editingEvent.video)} controls style={{ width: '100%', maxHeight: '200px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'block', marginBottom: '6px' }} />
-                        <button style={dlBtnStyle} onClick={() => downloadFile(editingEvent.video, `video.${editingEvent.video.split('.').pop() || 'mp4'}`)}>
-                          <Download size={13} /> Download Video
+                    <div>
+                      <label style={labelStyle}>Video</label>
+                      <input type="file" accept="video/*" ref={videoInputRef} style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const fd = new FormData();
+                          fd.append('video', file);
+                          updateMedia(fd);
+                          e.target.value = '';
+                        }} />
+                      {editingEvent.video ? (
+                        <>
+                          <video src={mediaUrl(editingEvent.video)} controls style={{ width: '100%', maxHeight: '200px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'block', marginBottom: '8px' }} />
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                            <button style={dlBtnStyle} onClick={() => downloadFile(editingEvent.video, `video.${editingEvent.video.split('.').pop() || 'mp4'}`)}>
+                              <Download size={13} /> Download
+                            </button>
+                            <button style={dlBtnStyle} disabled={mediaUpdating} onClick={() => videoInputRef.current?.click()}>
+                              <Upload size={13} /> Change
+                            </button>
+                            <button style={{ ...dlBtnStyle, color: '#e05c5c', borderColor: 'rgba(224,92,92,0.35)' }} disabled={mediaUpdating} onClick={() => {
+                              if (!window.confirm('Remove video?')) return;
+                              const fd = new FormData();
+                              fd.append('removeVideo', 'true');
+                              updateMedia(fd);
+                            }}>
+                              <Trash2 size={13} /> Remove
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <button style={dlBtnStyle} disabled={mediaUpdating} onClick={() => videoInputRef.current?.click()}>
+                          <Upload size={13} /> Upload Video
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                     {/* Additional videos */}
                     {editingEvent.videos?.length > 0 && (
                       <div>
@@ -2116,9 +2192,6 @@ const App = () => {
                           ))}
                         </div>
                       </div>
-                    )}
-                    {!editingEvent.image && !editingEvent.video && !editingEvent.images?.length && !editingEvent.videos?.length && (
-                      <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>No media uploaded for this event.</p>
                     )}
                   </div>
 
