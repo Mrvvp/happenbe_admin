@@ -22,7 +22,8 @@ import {
     Search,
     Link,
     Edit3,
-    Save
+    Save,
+    Download
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api/admin';
@@ -151,6 +152,25 @@ const App = () => {
     } catch { setEditError('Network error.'); }
     finally { setEditSaving(false); }
   };
+
+  const downloadFile = async (url: string, filename: string) => {
+    try {
+      const fullUrl = url.startsWith('http') ? url : `${BACKEND_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+      const response = await fetch(fullUrl);
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      console.error('Download failed', err);
+    }
+  };
+
   const [activeTab, setActiveTab] = useState<'creation' | 'claim' | 'edit' | 'remove'>('creation');
   const [currentView, setCurrentView] = useState<'dashboard' | 'events' | 'organizers' | 'venues' | 'queries' | 'past-events' | 'city-requests' | 'analytics' | 'team' | 'settings' | 'send-mail'>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -1976,6 +1996,8 @@ const App = () => {
               const inputStyle: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.88rem', fontFamily: 'inherit', outline: 'none' };
               const labelStyle: React.CSSProperties = { fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '5px' };
               const sectionTitle = (title: string) => <div style={{ gridColumn: 'span 2', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px', marginTop: '8px', fontSize: '0.78rem', fontWeight: 800, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{title}</div>;
+              const dlBtnStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 10px', borderRadius: '7px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' };
+              const mediaUrl = (p: string) => p?.startsWith('http') ? p : `${BACKEND_URL}${p?.startsWith('/') ? '' : '/'}${p}`;
               const field = (key: string, label: string, full = false, type = 'text') => (
                 <div key={key} style={{ gridColumn: full ? 'span 2' : 'span 1' }}>
                   <label style={labelStyle}>{label}</label>
@@ -2037,6 +2059,67 @@ const App = () => {
                     <textarea value={Array.isArray(editingEvent.termsAndConditions) ? editingEvent.termsAndConditions.join('\n') : (editingEvent.termsAndConditions || '')}
                       onChange={e => setEditingEvent((prev: any) => ({ ...prev, termsAndConditions: e.target.value.split('\n').map((s: string) => s.trim()).filter(Boolean) }))}
                       rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+                  </div>
+
+                  {sectionTitle('Media')}
+                  <div style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {/* Main image */}
+                    {editingEvent.image && (
+                      <div>
+                        <label style={labelStyle}>Main Image</label>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                          <img src={mediaUrl(editingEvent.image)} alt="" style={{ width: '120px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-color)', flexShrink: 0 }} />
+                          <button style={dlBtnStyle} onClick={() => downloadFile(editingEvent.image, `image.${editingEvent.image.split('.').pop() || 'jpg'}`)}>
+                            <Download size={13} /> Download
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {/* Additional images */}
+                    {editingEvent.images?.length > 0 && (
+                      <div>
+                        <label style={labelStyle}>Additional Images</label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                          {editingEvent.images.map((img: string, i: number) => (
+                            <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <img src={mediaUrl(img)} alt="" style={{ width: '100px', height: '70px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border-color)' }} />
+                              <button style={dlBtnStyle} onClick={() => downloadFile(img, `image-${i + 1}.${img.split('.').pop() || 'jpg'}`)}>
+                                <Download size={12} /> Download
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* Video */}
+                    {editingEvent.video && (
+                      <div>
+                        <label style={labelStyle}>Video</label>
+                        <video src={mediaUrl(editingEvent.video)} controls style={{ width: '100%', maxHeight: '200px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'block', marginBottom: '6px' }} />
+                        <button style={dlBtnStyle} onClick={() => downloadFile(editingEvent.video, `video.${editingEvent.video.split('.').pop() || 'mp4'}`)}>
+                          <Download size={13} /> Download Video
+                        </button>
+                      </div>
+                    )}
+                    {/* Additional videos */}
+                    {editingEvent.videos?.length > 0 && (
+                      <div>
+                        <label style={labelStyle}>Additional Videos</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {editingEvent.videos.map((vid: string, i: number) => (
+                            <div key={i}>
+                              <video src={mediaUrl(vid)} controls style={{ width: '100%', maxHeight: '180px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'block', marginBottom: '6px' }} />
+                              <button style={dlBtnStyle} onClick={() => downloadFile(vid, `video-${i + 1}.${vid.split('.').pop() || 'mp4'}`)}>
+                                <Download size={12} /> Download
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {!editingEvent.image && !editingEvent.video && !editingEvent.images?.length && !editingEvent.videos?.length && (
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>No media uploaded for this event.</p>
+                    )}
                   </div>
 
                   {sectionTitle('Status')}
