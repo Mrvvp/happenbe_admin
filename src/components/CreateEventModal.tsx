@@ -21,6 +21,146 @@ const STEPS = [
     { id: 4, label: 'Booking' },
 ];
 
+// ── Time Picker ────────────────────────────────────────────────────────────
+const TP_HOURS = [1,2,3,4,5,6,7,8,9,10,11,12];
+const TP_MINUTES = [0,5,10,15,20,25,30,35,40,45,50,55];
+const TP_AMPM = ['AM','PM'];
+const TP_ITEM_H = 36;
+
+const TimePicker = ({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) => {
+    const [open, setOpen] = useState(false);
+    const rootRef = useRef<HTMLDivElement>(null);
+    const hourRef = useRef<HTMLDivElement>(null);
+    const minRef  = useRef<HTMLDivElement>(null);
+    const ampmRef = useRef<HTMLDivElement>(null);
+
+    const parse = (val: string) => {
+        if (!val) return { h: 12, m: 0, ap: 'AM' };
+        const [hh, mm] = val.split(':').map(Number);
+        return { h: hh % 12 || 12, m: Math.round(mm / 5) * 5 % 60, ap: hh >= 12 ? 'PM' : 'AM' };
+    };
+
+    const { h: initH, m: initM, ap: initAp } = parse(value);
+    const [selH, setSelH] = useState(initH);
+    const [selM, setSelM] = useState(initM);
+    const [selAp, setSelAp] = useState(initAp);
+    const selHRef = useRef(initH);
+    const selMRef = useRef(initM);
+    const selApRef = useRef(initAp);
+
+    useEffect(() => {
+        const { h, m, ap } = parse(value);
+        setSelH(h); selHRef.current = h;
+        setSelM(m); selMRef.current = m;
+        setSelAp(ap); selApRef.current = ap;
+    }, [value]);
+
+    const commit = (h: number, m: number, ap: string) => {
+        let h24 = h % 12;
+        if (ap === 'PM') h24 += 12;
+        onChange(`${String(h24).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+    };
+
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e: MouseEvent) => {
+            if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+                commit(selHRef.current, selMRef.current, selApRef.current);
+                setOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [open]);
+
+    useEffect(() => {
+        if (!open) return;
+        requestAnimationFrame(() => {
+            if (hourRef.current) hourRef.current.scrollTop = TP_HOURS.indexOf(selH) * TP_ITEM_H;
+            if (minRef.current)  minRef.current.scrollTop  = TP_MINUTES.indexOf(selM) * TP_ITEM_H;
+            if (ampmRef.current) ampmRef.current.scrollTop = (selAp === 'PM' ? 1 : 0) * TP_ITEM_H;
+        });
+    }, [open]);
+
+    useEffect(() => {
+        if (!open) return;
+        const timers: ReturnType<typeof setTimeout>[] = [0 as any, 0 as any, 0 as any];
+        const makeHandler = (ref: React.RefObject<HTMLDivElement | null>, items: (number|string)[], setFn: (v: any) => void, storeRef: React.MutableRefObject<any>, idx: number) => () => {
+            if (!ref.current) return;
+            const i = Math.round(ref.current.scrollTop / TP_ITEM_H);
+            const val = items[Math.max(0, Math.min(i, items.length - 1))];
+            setFn(val); storeRef.current = val;
+            clearTimeout(timers[idx]);
+            timers[idx] = setTimeout(() => commit(selHRef.current, selMRef.current, selApRef.current), 200);
+        };
+        const onHour = makeHandler(hourRef, TP_HOURS, setSelH, selHRef, 0);
+        const onMin  = makeHandler(minRef,  TP_MINUTES, setSelM, selMRef, 1);
+        const onAp   = makeHandler(ampmRef, TP_AMPM, setSelAp, selApRef, 2);
+        const hEl = hourRef.current, mEl = minRef.current, apEl = ampmRef.current;
+        hEl?.addEventListener('scroll', onHour, { passive: true });
+        mEl?.addEventListener('scroll', onMin,  { passive: true });
+        apEl?.addEventListener('scroll', onAp,  { passive: true });
+        return () => {
+            hEl?.removeEventListener('scroll', onHour);
+            mEl?.removeEventListener('scroll', onMin);
+            apEl?.removeEventListener('scroll', onAp);
+            timers.forEach(clearTimeout);
+        };
+    }, [open]);
+
+    const scrollTo = (ref: React.RefObject<HTMLDivElement | null>, top: number) => ref.current?.scrollTo({ top, behavior: 'smooth' });
+    const { h: dH, m: dM, ap: dAp } = parse(value);
+    const display = value ? `${dH}:${String(dM).padStart(2,'0')} ${dAp}` : '';
+
+    const colStyle: React.CSSProperties = {
+        overflowY: 'scroll', height: TP_ITEM_H * 3, scrollbarWidth: 'none' as any,
+        paddingTop: TP_ITEM_H, paddingBottom: TP_ITEM_H,
+        scrollSnapType: 'y mandatory' as any, overscrollBehavior: 'contain',
+        WebkitOverflowScrolling: 'touch' as any,
+    };
+    const itemStyle = (sel: boolean): React.CSSProperties => ({
+        height: TP_ITEM_H, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: sel ? '1.1rem' : '1rem', fontWeight: sel ? 700 : 400,
+        color: sel ? '#000' : '#b0b0b0',
+        cursor: 'pointer', flexShrink: 0,
+        scrollSnapAlign: 'center' as any, userSelect: 'none',
+        transition: 'color 0.1s, font-size 0.1s',
+    });
+
+    return (
+        <div ref={rootRef} style={{ position: 'relative', width: '100%' }}>
+            <div style={{ ...inputBase, cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} onClick={() => setOpen(o => !o)}>
+                <span style={display ? { color: '#0f172a' } : { color: '#94a3b8', fontWeight: 400 }}>{display || placeholder}</span>
+                {display && (
+                    <span
+                        onClick={e => { e.stopPropagation(); onChange(''); setOpen(false); }}
+                        style={{ color: '#94a3b8', fontSize: '1.1rem', lineHeight: 1, padding: '0 2px', cursor: 'pointer', flexShrink: 0 }}
+                        onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+                        onMouseLeave={e => (e.currentTarget.style.color = '#94a3b8')}
+                    >×</span>
+                )}
+            </div>
+            {open && (
+                <div style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 9999, background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.12)', display: 'flex', overflow: 'hidden', width: '200px' }}>
+                    <div style={{ position: 'absolute', left: 0, right: 0, pointerEvents: 'none', zIndex: 2, top: '50%', transform: 'translateY(-50%)', height: TP_ITEM_H, background: 'rgba(0,0,0,0.05)', borderTop: '1px solid rgba(0,0,0,0.08)', borderBottom: '1px solid rgba(0,0,0,0.08)' }} />
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: TP_ITEM_H, pointerEvents: 'none', zIndex: 2, background: 'linear-gradient(to bottom, #fff 30%, transparent 100%)' }} />
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: TP_ITEM_H, pointerEvents: 'none', zIndex: 2, background: 'linear-gradient(to top, #fff 30%, transparent 100%)' }} />
+                    <div ref={hourRef} className="time-picker-col" style={{ ...colStyle, flex: 1 }}>
+                        {TP_HOURS.map(hv => <div key={hv} style={itemStyle(hv === selH)} onClick={() => { setSelH(hv); selHRef.current = hv; scrollTo(hourRef, TP_HOURS.indexOf(hv) * TP_ITEM_H); commit(hv, selMRef.current, selApRef.current); }}>{hv}</div>)}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '12px', fontSize: '1rem', fontWeight: 700, color: '#b0b0b0', flexShrink: 0, zIndex: 3 }}>:</div>
+                    <div ref={minRef} className="time-picker-col" style={{ ...colStyle, flex: 1 }}>
+                        {TP_MINUTES.map(mv => <div key={mv} style={itemStyle(mv === selM)} onClick={() => { setSelM(mv); selMRef.current = mv; scrollTo(minRef, TP_MINUTES.indexOf(mv) * TP_ITEM_H); commit(selHRef.current, mv, selApRef.current); }}>{String(mv).padStart(2,'0')}</div>)}
+                    </div>
+                    <div ref={ampmRef} className="time-picker-col" style={{ ...colStyle, flex: 'none', width: '58px' }}>
+                        {TP_AMPM.map((apv, i) => <div key={apv} style={{ ...itemStyle(apv === selAp), fontSize: apv === selAp ? '0.85rem' : '0.8rem', letterSpacing: '0.05em' }} onClick={() => { setSelAp(apv); selApRef.current = apv; scrollTo(ampmRef, i * TP_ITEM_H); commit(selHRef.current, selMRef.current, apv); setOpen(false); }}>{apv}</div>)}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 // ── Shared style constants ─────────────────────────────────────────────────
 const inputBase: React.CSSProperties = {
     width: '100%', boxSizing: 'border-box',
@@ -118,8 +258,7 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
 
     const canContinue = () => {
         if (currentStep === 1) {
-            const base = eventData.title && eventData.date && eventData.startTime &&
-                eventData.venue && eventData.city;
+            const base = eventData.title && eventData.date && eventData.venue && eventData.city;
             return eventData.isMultiDay ? !!(base && eventData.endDate) : !!base;
         }
         if (currentStep === 2) return !!eventData.organizerName;
@@ -361,49 +500,21 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }: CreateEventModalProps)
 
                                     {/* Start Time */}
                                     <div style={fieldBase}>
-                                        <label style={labelBase}>Starts At <span style={{ color: 'var(--accent-primary)' }}>*</span></label>
-                                        <DatePicker
-                                            selected={eventData.startTime ? new Date(`2000-01-01T${eventData.startTime}`) : null}
-                                            onChange={(date: Date | null) => {
-                                                if (date) {
-                                                    const hours = String(date.getHours()).padStart(2, '0');
-                                                    const minutes = String(date.getMinutes()).padStart(2, '0');
-                                                    setEventData(p => ({ ...p, startTime: `${hours}:${minutes}` }));
-                                                }
-                                            }}
-                                            showTimeSelect
-                                            showTimeSelectOnly
-                                            timeIntervals={5}
-                                            timeCaption="Time"
-                                            dateFormat="h:mm aa"
-                                            className={`admin-picker-input${eventData.startTime ? ' has-value' : ''}`}
-                                            placeholderText="Enter the start time"
-                                            showPopperArrow={false}
-                                            onKeyDown={(e) => e.preventDefault()}
+                                        <label style={labelBase}>Starts At <span style={{ fontSize: '0.7rem', fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)', marginLeft: '2px' }}>(optional)</span></label>
+                                        <TimePicker
+                                            value={eventData.startTime}
+                                            onChange={(val) => setEventData(p => ({ ...p, startTime: val }))}
+                                            placeholder="Select start time"
                                         />
                                     </div>
 
                                     {/* End Time */}
                                     <div style={fieldBase}>
                                         <label style={labelBase}>Ends At <span style={{ fontSize: '0.7rem', fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)', marginLeft: '2px' }}>(optional)</span></label>
-                                        <DatePicker
-                                            selected={eventData.endTime ? new Date(`2000-01-01T${eventData.endTime}`) : null}
-                                            onChange={(date: Date | null) => {
-                                                if (date) {
-                                                    const hours = String(date.getHours()).padStart(2, '0');
-                                                    const minutes = String(date.getMinutes()).padStart(2, '0');
-                                                    setEventData(p => ({ ...p, endTime: `${hours}:${minutes}` }));
-                                                }
-                                            }}
-                                            showTimeSelect
-                                            showTimeSelectOnly
-                                            timeIntervals={5}
-                                            timeCaption="Time"
-                                            dateFormat="h:mm aa"
-                                            className={`admin-picker-input${eventData.endTime ? ' has-value' : ''}`}
-                                            placeholderText="Enter the end time"
-                                            showPopperArrow={false}
-                                            onKeyDown={(e) => e.preventDefault()}
+                                        <TimePicker
+                                            value={eventData.endTime}
+                                            onChange={(val) => setEventData(p => ({ ...p, endTime: val }))}
+                                            placeholder="Select end time"
                                         />
                                     </div>
 

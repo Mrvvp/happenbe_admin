@@ -138,7 +138,8 @@ const App = () => {
         body: JSON.stringify({
           title: editingEvent.title,
           date: editingEvent.date,
-          endDate: editingEvent.endDate,
+          endDate: editingEvent.endDate || null,
+          isMultiDay: !!editingEvent.endDate,
           startTime: editingEvent.startTime,
           endTime: editingEvent.endTime,
           venue: editingEvent.venue,
@@ -155,7 +156,7 @@ const App = () => {
       });
       if (!res.ok) { const d = await res.json(); setEditError(d.message || 'Save failed.'); return; }
       setEditingEvent(null);
-      fetchViewData('events');
+      setEventsRefreshKey(k => k + 1);
     } catch { setEditError('Network error.'); }
     finally { setEditSaving(false); }
   };
@@ -210,8 +211,23 @@ const App = () => {
   // Data for additional views
   const [allEvents, setAllEvents] = useState<any[]>([]);
   const [eventsFilter, setEventsFilter] = useState<'all' | 'approved' | 'pending' | 'rejected' | 'expired'>('all');
-  const [eventsEventFilter, setEventsEventFilter] = useState<string>('');
-  const [eventsOrgFilter, setEventsOrgFilter] = useState<string>('');
+  const [eventsPage, setEventsPage] = useState(1);
+  const [eventsTotal, setEventsTotal] = useState(0);
+  const [eventsHasMore, setEventsHasMore] = useState(false);
+  const [eventsLoadingMore, setEventsLoadingMore] = useState(false);
+  const [eventsStatusCounts, setEventsStatusCounts] = useState<Record<string, number>>({ all: 0, approved: 0, pending: 0, rejected: 0, expired: 0 });
+  const [eventsRefreshKey, setEventsRefreshKey] = useState(0);
+  const [pastEventsPage, setPastEventsPage] = useState(1);
+  const [pastEventsTotal, setPastEventsTotal] = useState(0);
+  const [pastEventsHasMore, setPastEventsHasMore] = useState(false);
+  const [pastEventsLoadingMore, setPastEventsLoadingMore] = useState(false);
+  const [organizersPage, setOrganizersPage] = useState(1);
+  const [organizersTotal, setOrganizersTotal] = useState(0);
+  const [organizersHasMore, setOrganizersHasMore] = useState(false);
+  const [organizersLoadingMore, setOrganizersLoadingMore] = useState(false);
+  const [venuesPage, setVenuesPage] = useState(1);
+  const [queriesPage, setQueriesPage] = useState(1);
+  const [cityRequestsPage, setCityRequestsPage] = useState(1);
   const [organizersList, setOrganizersList] = useState<any[]>([]);
   const [venuesList, setVenuesList] = useState<any[]>([]);
   const [queriesList, setQueriesList] = useState<any[]>([]);
@@ -284,21 +300,16 @@ const App = () => {
       }
 
       let endpoint = '';
-      if (view === 'events') endpoint = 'events-all';
-      else if (view === 'organizers') endpoint = 'organizers-list';
-      else if (view === 'venues') endpoint = 'venues-list';
+      if (view === 'venues') endpoint = 'venues-list';
       else if (view === 'queries') endpoint = 'queries';
-      else if (view === 'past-events') endpoint = 'past-events';
 
       if (!endpoint) { setLoading(false); return; }
 
       const res = await authFetch(`${API_BASE}/${endpoint}`);
-      
+
       if (!res.ok) {
         console.error(`API returned ${res.status} for ${endpoint}`);
-        if (view === 'events') setAllEvents([]);
-        else if (view === 'organizers') setOrganizersList([]);
-        else if (view === 'venues') setVenuesList([]);
+        if (view === 'venues') setVenuesList([]);
         setLoading(false);
         return;
       }
@@ -307,25 +318,109 @@ const App = () => {
       const safeData = Array.isArray(data) ? data : [];
       const byDate = (arr: any[]) => [...arr].sort((a, b) => new Date(b.createdAt ?? b.date ?? 0).getTime() - new Date(a.createdAt ?? a.date ?? 0).getTime());
 
-      if (view === 'events') setAllEvents(byDate(safeData));
-      else if (view === 'organizers') setOrganizersList(safeData);
-      else if (view === 'venues') setVenuesList(safeData);
+      if (view === 'venues') setVenuesList(safeData);
       else if (view === 'queries') setQueriesList(byDate(safeData));
-      else if (view === 'past-events') setPastEventsList(byDate(safeData));
     } catch (error) {
       console.error(`Error fetching ${view} data:`, error);
-      if (view === 'events') setAllEvents([]);
-      else if (view === 'organizers') setOrganizersList([]);
-      else if (view === 'venues') setVenuesList([]);
+      if (view === 'venues') setVenuesList([]);
       else if (view === 'queries') setQueriesList([]);
-      else if (view === 'past-events') setPastEventsList([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    if (currentView !== 'events') return;
+    if (eventsPage === 1) setLoading(true);
+    else setEventsLoadingMore(true);
+    let cancelled = false;
+    const doFetch = async () => {
+      try {
+        const params = new URLSearchParams({ page: String(eventsPage), limit: '10', status: eventsFilter, search: searchTerm.trim() });
+        const res = await authFetch(`${API_BASE}/events-all?${params}`);
+        if (cancelled) return;
+        if (!res.ok) { setLoading(false); setEventsLoadingMore(false); return; }
+        const data = await res.json();
+        if (cancelled) return;
+        const newEvents = Array.isArray(data) ? data : (Array.isArray(data.events) ? data.events : []);
+        setAllEvents(prev => eventsPage === 1 ? newEvents : [...prev, ...newEvents]);
+        if (data.total != null) setEventsTotal(data.total);
+        setEventsHasMore(
+          data.hasMore ??
+          (data.totalPages != null ? eventsPage < data.totalPages : newEvents.length >= 10)
+        );
+        setEventsStatusCounts(data.statusCounts ?? { all: 0, approved: 0, pending: 0, rejected: 0, expired: 0 });
+      } catch {}
+      finally { if (!cancelled) { setLoading(false); setEventsLoadingMore(false); } }
+    };
+    const t = setTimeout(doFetch, eventsPage === 1 && searchTerm ? 300 : 0);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [currentView, eventsPage, eventsFilter, searchTerm, eventsRefreshKey]);
+
+  useEffect(() => {
+    if (currentView !== 'past-events') return;
+    if (pastEventsPage === 1) { setLoading(true); setPastEventsList([]); }
+    else setPastEventsLoadingMore(true);
+    let cancelled = false;
+    const doFetch = async () => {
+      try {
+        const params = new URLSearchParams({ page: String(pastEventsPage), limit: '10', search: searchTerm.trim() });
+        const res = await authFetch(`${API_BASE}/past-events?${params}`);
+        if (cancelled || !res.ok) { if (!cancelled && pastEventsPage === 1) setPastEventsList([]); return; }
+        const data = await res.json();
+        if (cancelled) return;
+        const newEvents = Array.isArray(data) ? data : (Array.isArray(data.events) ? data.events : []);
+        setPastEventsList(prev => pastEventsPage === 1 ? newEvents : [...prev, ...newEvents]);
+        setPastEventsTotal(data.total ?? 0);
+        setPastEventsHasMore(data.hasMore ?? newEvents.length >= 10);
+      } catch { if (!cancelled && pastEventsPage === 1) setPastEventsList([]); }
+      finally { if (!cancelled) { setLoading(false); setPastEventsLoadingMore(false); } }
+    };
+    const t = setTimeout(doFetch, pastEventsPage === 1 && searchTerm ? 300 : 0);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [currentView, pastEventsPage, searchTerm]);
+
+  useEffect(() => {
+    if (currentView !== 'organizers') return;
+    if (organizersPage === 1) { setLoading(true); setOrganizersList([]); }
+    else setOrganizersLoadingMore(true);
+    let cancelled = false;
+    const doFetch = async () => {
+      try {
+        const params = new URLSearchParams({ page: String(organizersPage), limit: '20', search: searchTerm.trim() });
+        const res = await authFetch(`${API_BASE}/organizers-list?${params}`);
+        if (cancelled || !res.ok) { return; }
+        const data = await res.json();
+        if (cancelled) return;
+        const newOrgs = Array.isArray(data) ? data : (Array.isArray(data.organizers) ? data.organizers : []);
+        setOrganizersList(prev => organizersPage === 1 ? newOrgs : [...prev, ...newOrgs]);
+        if (data.total != null) setOrganizersTotal(data.total);
+        setOrganizersHasMore(data.hasMore ?? newOrgs.length >= 20);
+      } catch {}
+      finally { if (!cancelled) { setLoading(false); setOrganizersLoadingMore(false); } }
+    };
+    const t = setTimeout(doFetch, organizersPage === 1 && searchTerm ? 300 : 0);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [currentView, organizersPage, searchTerm]);
+
+  // Reset page to 1 when search changes so results replace instead of append
+  useEffect(() => {
+    if (currentView === 'events') setEventsPage(1);
+    else if (currentView === 'organizers') setOrganizersPage(1);
+    else if (currentView === 'past-events') setPastEventsPage(1);
+  }, [searchTerm]);
+
+  useEffect(() => {
     setSearchTerm('');
+    setEventsPage(1);
+    setAllEvents([]);
+    setPastEventsPage(1);
+    setPastEventsList([]);
+    setOrganizersPage(1);
+    setOrganizersList([]);
+    setVenuesPage(1);
+    setQueriesPage(1);
+    setCityRequestsPage(1);
     if (currentView === 'dashboard') {
       fetchDashboardData();
     } else if (currentView === 'team') {
@@ -333,7 +428,7 @@ const App = () => {
     } else if ((currentView as string) === 'analytics') {
       setLoading(true);
       authFetch(`${API_BASE}/analytics`).then(r => r.json()).then(d => setAnalyticsData(d)).finally(() => setLoading(false));
-    } else {
+    } else if (currentView !== 'events' && currentView !== 'past-events' && currentView !== 'organizers') {
       fetchViewData(currentView);
     }
   }, [currentView]);
@@ -357,10 +452,9 @@ const App = () => {
       });
 
       if (res.ok) {
-        // Remove immediately from local state so it disappears right away
         setRequests(prev => prev.filter(r => r.id !== id));
-        // Then refresh all data from server
         fetchDashboardData();
+        if (currentView === 'events') setEventsRefreshKey(k => k + 1);
       } else {
         const err = await res.json().catch(() => ({}));
         alert(`Action failed: ${err.message || res.statusText}`);
@@ -672,27 +766,6 @@ const App = () => {
       { key: 'rejected', label: 'Rejected', color: 'var(--error)' },
       { key: 'expired', label: 'Expired', color: 'var(--text-muted)' },
     ];
-    const uniqueEventTitles = Array.from(new Set(allEvents.map(e => e.title).filter(Boolean))).sort();
-    const uniqueOrganizers = Array.from(new Set(allEvents.map(e => e.organizer?.organizerName).filter(Boolean))).sort();
-    const filteredEvents = allEvents.filter(e => {
-      const matchesStatus = eventsFilter === 'all' || (e.status || 'pending') === eventsFilter;
-      const matchesEventName = !eventsEventFilter || e.title === eventsEventFilter;
-      const matchesOrg = !eventsOrgFilter || e.organizer?.organizerName === eventsOrgFilter;
-      const matchesSearch =
-        !searchTerm ||
-        (e.title?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (e.city?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (e.venue?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (e.organizer?.organizerName?.toLowerCase().includes(searchTerm.toLowerCase()));
-      return matchesStatus && matchesEventName && matchesOrg && matchesSearch;
-    });
-    const selectStyle: React.CSSProperties = {
-      padding: '6px 28px 6px 10px', borderRadius: '8px', border: '1px solid var(--border-color)',
-      background: 'var(--bg-secondary)', color: 'var(--text-secondary)', fontSize: '0.8rem',
-      fontWeight: 500, cursor: 'pointer', outline: 'none', appearance: 'none' as any,
-      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
-      backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center',
-    };
     return (
     <div className="glass-card list-card" style={{ padding: 0, overflow: 'hidden' }}>
       <div className="section-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '14px' }}>
@@ -703,36 +776,21 @@ const App = () => {
           </div>
           <div className="search-box">
             <Search size={15} color="var(--text-muted)" />
-            <input type="text" placeholder="Search events..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <input type="text" placeholder="Search events..." value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setEventsPage(1); }} />
           </div>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
           {filterOptions.map(f => {
-            const count = f.key === 'all' ? allEvents.length : allEvents.filter(e => (e.status || 'pending') === f.key).length;
+            const count = eventsStatusCounts[f.key] ?? 0;
             const isActive = eventsFilter === f.key;
             return (
-              <button key={f.key} onClick={() => setEventsFilter(f.key)}
+              <button key={f.key} onClick={() => { setEventsFilter(f.key); setEventsPage(1); }}
                 style={{ padding: '5px 14px', borderRadius: '20px', border: `1px solid ${isActive ? f.color : 'var(--border-color)'}`, background: isActive ? `${f.color}18` : 'transparent', color: isActive ? f.color : 'var(--text-muted)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s' }}>
                 {f.label}
                 <span style={{ background: isActive ? f.color : 'var(--bg-tertiary)', color: isActive ? '#fff' : 'var(--text-muted)', borderRadius: '10px', padding: '0 6px', fontSize: '0.7rem', fontWeight: 700 }}>{count}</span>
               </button>
             );
           })}
-          <div style={{ width: '1px', height: '20px', background: 'var(--border-color)', margin: '0 4px' }} />
-          <select value={eventsEventFilter} onChange={e => setEventsEventFilter(e.target.value)} style={selectStyle}>
-            <option value="">All Events</option>
-            {uniqueEventTitles.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <select value={eventsOrgFilter} onChange={e => setEventsOrgFilter(e.target.value)} style={selectStyle}>
-            <option value="">All Organizers</option>
-            {uniqueOrganizers.map(o => <option key={o} value={o}>{o}</option>)}
-          </select>
-          {(eventsEventFilter || eventsOrgFilter) && (
-            <button onClick={() => { setEventsEventFilter(''); setEventsOrgFilter(''); }}
-              style={{ padding: '5px 10px', borderRadius: '20px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-muted)', fontSize: '0.75rem', cursor: 'pointer' }}>
-              Clear
-            </button>
-          )}
         </div>
       </div>
       {isMobile ? (
@@ -740,11 +798,11 @@ const App = () => {
         <div>
           {loading ? (
             <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading events...</div>
-          ) : filteredEvents.length === 0 ? (
+          ) : allEvents.length === 0 ? (
             <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
               {searchTerm || eventsFilter !== 'all' ? 'No matches found.' : 'No events found.'}
             </div>
-          ) : filteredEvents.map((event) => (
+          ) : allEvents.map((event) => (
             <div
               key={event._id}
               onClick={() => { setSelectedRequest({ id: event._id, type: 'creation' }); setIsViewModalOpen(true); }}
@@ -786,9 +844,9 @@ const App = () => {
             <tbody>
               {loading ? (
                 <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading events...</td></tr>
-              ) : filteredEvents.length === 0 ? (
+              ) : allEvents.length === 0 ? (
                 <tr><td colSpan={6} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm || eventsFilter !== 'all' ? 'No matches found.' : 'No events found.'}</td></tr>
-              ) : filteredEvents.map((event) => (
+              ) : allEvents.map((event) => (
                 <tr
                   key={event._id}
                   onClick={() => { setSelectedRequest({ id: event._id, type: 'creation' }); setIsViewModalOpen(true); }}
@@ -817,7 +875,7 @@ const App = () => {
                         <button onClick={(e) => { e.stopPropagation(); handleAction(event._id, 'creation', 'approved'); }} style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(16,185,129,0.1)', color: 'var(--success)', border: 'none', cursor: 'pointer' }} title="Approve"><Check size={16} /></button>
                         <button onClick={(e) => { e.stopPropagation(); handleAction(event._id, 'creation', 'rejected'); }} style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239,68,68,0.1)', color: 'var(--error)', border: 'none', cursor: 'pointer' }} title="Reject"><X size={16} /></button>
                       </>)}
-                      <button onClick={(e) => { e.stopPropagation(); setEditingEvent({ ...event }); }} style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: 'none', cursor: 'pointer' }} title="Edit event"><Edit3 size={16} /></button>
+                      <button onClick={(e) => { e.stopPropagation(); const toDate = (d: string) => d ? new Date(d).toISOString().split('T')[0] : ''; setEditingEvent({ ...event, date: toDate(event.date), endDate: toDate(event.endDate), images: (event.images || []).filter((img: string) => img !== event.image) }); }} style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: 'none', cursor: 'pointer' }} title="Edit event"><Edit3 size={16} /></button>
                       <button onClick={(e) => copyManageLink(event, e)} style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(99,102,241,0.1)', color: '#6366f1', border: 'none', cursor: 'pointer' }} title="Copy organizer dashboard link"><Link size={16} /></button>
                     </div>
                   </td>
@@ -827,12 +885,29 @@ const App = () => {
           </table>
         </div>
       )}
+      {(eventsHasMore || eventsTotal > 0) && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderTop: '1px solid var(--border-color)', gap: '12px' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            Showing {allEvents.length} of {eventsTotal}
+          </span>
+          {eventsHasMore && (
+            <button
+              onClick={() => setEventsPage(p => p + 1)}
+              disabled={eventsLoadingMore}
+              style={{ padding: '8px 28px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 600, cursor: eventsLoadingMore ? 'not-allowed' : 'pointer', opacity: eventsLoadingMore ? 0.6 : 1, fontFamily: 'inherit' }}
+            >
+              {eventsLoadingMore ? 'Loading...' : 'Load More'}
+            </button>
+          )}
+        </div>
+      )}
     </div>
     );
   };
 
   const renderOrganizersView = () => {
-    const filtered = organizersList.filter(o => o._id?.toLowerCase().includes(searchTerm.toLowerCase()));
+    const visible = organizersList;
+    const orgHasMore = organizersHasMore;
     return (
     <div className="glass-card list-card" style={{ padding: 0, overflow: 'hidden' }}>
       <div className="section-header">
@@ -849,7 +924,7 @@ const App = () => {
         <div>
           {loading ? <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>
           : filtered.length === 0 ? <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No organizers found.'}</div>
-          : filtered.map((org, i) => (
+          : visible.map((org, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', borderBottom: '1px solid var(--border-color)' }}>
               <div style={{ width: '44px', height: '44px', minWidth: '44px', borderRadius: '10px', overflow: 'hidden', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {org?.logo ? <img src={org.logo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
@@ -880,7 +955,7 @@ const App = () => {
             <tbody>
               {loading ? <tr><td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading organizers...</td></tr>
               : filtered.length === 0 ? <tr><td colSpan={5} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No organizers found.'}</td></tr>
-              : filtered.map((org, i) => (
+              : visible.map((org, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={{ padding: '14px 20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -908,11 +983,19 @@ const App = () => {
           </table>
         </div>
       )}
+      {(orgHasMore || organizersLoadingMore) && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderTop: '1px solid var(--border-color)' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Showing {visible.length} of {organizersTotal}</span>
+          <button onClick={() => { if (!organizersLoadingMore) setOrganizersPage(p => p + 1); }} disabled={organizersLoadingMore} style={{ padding: '8px 28px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 600, cursor: organizersLoadingMore ? 'default' : 'pointer', fontFamily: 'inherit', opacity: organizersLoadingMore ? 0.6 : 1 }}>{organizersLoadingMore ? 'Loading…' : 'Load More'}</button>
+        </div>
+      )}
     </div>
   );};
 
   const renderVenuesView = () => {
     const filtered = venuesList.filter(v => v._id?.venue?.toLowerCase().includes(searchTerm.toLowerCase()) || v._id?.city?.toLowerCase().includes(searchTerm.toLowerCase()));
+    const visible = filtered.slice(0, venuesPage * 10);
+    const venueHasMore = visible.length < filtered.length;
     return (
     <div className="glass-card list-card" style={{ padding: 0, overflow: 'hidden' }}>
       <div className="section-header">
@@ -929,7 +1012,7 @@ const App = () => {
         <div>
           {loading ? <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>
           : filtered.length === 0 ? <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No venues found.'}</div>
-          : filtered.map((v, i) => (
+          : visible.map((v, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', borderBottom: '1px solid var(--border-color)' }}>
               <div style={{ width: '40px', height: '40px', minWidth: '40px', borderRadius: '10px', background: 'rgba(37,99,235,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -955,7 +1038,7 @@ const App = () => {
             <tbody>
               {loading ? <tr><td colSpan={3} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading venues...</td></tr>
               : filtered.length === 0 ? <tr><td colSpan={3} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No venues found.'}</td></tr>
-              : filtered.map((v, i) => (
+              : visible.map((v, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={{ padding: '14px 20px', fontSize: '0.9rem', fontWeight: 600 }}>{v?._id?.venue || 'Unnamed Venue'}</td>
                   <td style={{ padding: '14px 20px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{v?._id?.city || 'Unknown City'}</td>
@@ -964,6 +1047,12 @@ const App = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {venueHasMore && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderTop: '1px solid var(--border-color)' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Showing {visible.length} of {filtered.length}</span>
+          <button onClick={() => setVenuesPage(p => p + 1)} style={{ padding: '8px 28px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Load More</button>
         </div>
       )}
     </div>
@@ -980,6 +1069,8 @@ const App = () => {
       (q.organizerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (q.query || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
+    const visible = filtered.slice(0, queriesPage * 10);
+    const queryHasMore = visible.length < filtered.length;
     const unreadCount = queriesList.filter(q => q.status === 'unread').length;
 
     return (
@@ -1010,7 +1101,7 @@ const App = () => {
               <div style={{ fontSize: '2rem', marginBottom: '12px' }}>💬</div>
               <p>{searchTerm ? 'No queries match your search.' : 'No queries yet.'}</p>
             </div>
-          ) : filtered.map((q: any) => (
+          ) : visible.map((q: any) => (
             <div
               key={q._id}
               onClick={() => q.status === 'unread' && markQueryRead(q._id)}
@@ -1061,18 +1152,17 @@ const App = () => {
             </div>
           ))}
         </div>
+        {queryHasMore && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderTop: '1px solid var(--border-color)' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Showing {visible.length} of {filtered.length}</span>
+            <button onClick={() => setQueriesPage(p => p + 1)} style={{ padding: '8px 28px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Load More</button>
+          </div>
+        )}
       </div>
     );
   };
 
   const renderPastEventsView = () => {
-    const filtered = pastEventsList.filter(e =>
-      (e.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (e.venue || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (e.city || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (e.organizer?.organizerName || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
     return (
       <div className="glass-card list-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="section-header">
@@ -1081,10 +1171,10 @@ const App = () => {
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '4px 0 0' }}>Events that have already taken place — kept for records.</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: isMobile ? '100%' : 'auto' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{filtered.length} events</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{pastEventsTotal > 0 ? `${pastEventsList.length} of ${pastEventsTotal}` : `${pastEventsList.length}`} events</span>
             <div className="search-box" style={{ flex: isMobile ? 1 : 'unset' }}>
               <Search size={15} color="var(--text-muted)" />
-              <input type="text" placeholder="Search past events..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+              <input type="text" placeholder="Search past events..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPastEventsPage(1); }} />
             </div>
           </div>
         </div>
@@ -1092,8 +1182,8 @@ const App = () => {
         {isMobile ? (
           <div>
             {loading ? <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>
-            : filtered.length === 0 ? <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No past events yet.'}</div>
-            : filtered.map((e: any) => (
+            : pastEventsList.length === 0 ? <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No past events yet.'}</div>
+            : pastEventsList.map((e: any) => (
               <div key={e._id}
                 onClick={() => { setSelectedRequest({ id: e._id, type: 'creation' }); setIsViewModalOpen(true); }}
                 style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', transition: 'background 0.15s' }}
@@ -1124,8 +1214,8 @@ const App = () => {
               </thead>
               <tbody>
                 {loading ? <tr><td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</td></tr>
-                : filtered.length === 0 ? <tr><td colSpan={5} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No past events yet.'}</td></tr>
-                : filtered.map((e: any) => (
+                : pastEventsList.length === 0 ? <tr><td colSpan={5} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No past events yet.'}</td></tr>
+                : pastEventsList.map((e: any) => (
                   <tr key={e._id} onClick={() => { setSelectedRequest({ id: e._id, type: 'creation' }); setIsViewModalOpen(true); }}
                     style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer', transition: 'background 0.15s' }}
                     onMouseEnter={el => el.currentTarget.style.background = 'var(--bg-tertiary)'}
@@ -1147,6 +1237,18 @@ const App = () => {
             </table>
           </div>
         )}
+      {pastEventsHasMore && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderTop: '1px solid var(--border-color)' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Showing {pastEventsList.length} of {pastEventsTotal}</span>
+          <button
+            onClick={() => setPastEventsPage(p => p + 1)}
+            disabled={pastEventsLoadingMore}
+            style={{ padding: '8px 28px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 600, cursor: pastEventsLoadingMore ? 'not-allowed' : 'pointer', opacity: pastEventsLoadingMore ? 0.6 : 1, fontFamily: 'inherit' }}
+          >
+            {pastEventsLoadingMore ? 'Loading...' : 'Load More'}
+          </button>
+        </div>
+      )}
       </div>
     );
   };
@@ -1162,6 +1264,8 @@ const App = () => {
     const filtered = sorted.filter(([city]) =>
       city.toLowerCase().includes(searchTerm.toLowerCase())
     );
+    const visible = filtered.slice(0, cityRequestsPage * 10);
+    const cityHasMore = visible.length < filtered.length;
 
     return (
       <div className="glass-card list-card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -1185,7 +1289,7 @@ const App = () => {
           <div>
             {loading ? <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>
             : filtered.length === 0 ? <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No city requests yet.'}</div>
-            : filtered.map(([city, reqs]) => {
+            : visible.map(([city, reqs]) => {
               const maxCount = sorted[0]?.[1]?.length || 1;
               const pct = Math.round((reqs.length / maxCount) * 100);
               return (
@@ -1218,7 +1322,7 @@ const App = () => {
               <tbody>
                 {loading ? <tr><td colSpan={4} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</td></tr>
                 : filtered.length === 0 ? <tr><td colSpan={4} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No city requests yet.'}</td></tr>
-                : filtered.map(([city, reqs]) => {
+                : visible.map(([city, reqs]) => {
                   const maxCount = sorted[0]?.[1]?.length || 1;
                   const pct = Math.round((reqs.length / maxCount) * 100);
                   const latest = reqs.reduce((a: any, b: any) => new Date(a.createdAt) > new Date(b.createdAt) ? a : b);
@@ -1240,6 +1344,12 @@ const App = () => {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+        {cityHasMore && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderTop: '1px solid var(--border-color)' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Showing {visible.length} of {filtered.length}</span>
+            <button onClick={() => setCityRequestsPage(p => p + 1)} style={{ padding: '8px 28px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Load More</button>
           </div>
         )}
       </div>
