@@ -130,6 +130,14 @@ const App = () => {
 
   const handleSaveEventEdit = async () => {
     if (!editingEvent) return;
+    if (editingEvent.bookingType === 'website' && !editingEvent.websiteLink?.trim()) {
+      setEditError('Website/Instagram link is required for this booking type.');
+      return;
+    }
+    if (editingEvent.bookingType === 'whatsapp' && !editingEvent.whatsappLink?.trim()) {
+      setEditError('WhatsApp link is required for this booking type.');
+      return;
+    }
     setEditSaving(true); setEditError('');
     try {
       const res = await authFetch(`${API_BASE}/events/${editingEvent._id}/edit`, {
@@ -923,7 +931,7 @@ const App = () => {
       {isMobile ? (
         <div>
           {loading ? <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>
-          : filtered.length === 0 ? <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No organizers found.'}</div>
+          : visible.length === 0 ? <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No organizers found.'}</div>
           : visible.map((org, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', borderBottom: '1px solid var(--border-color)' }}>
               <div style={{ width: '44px', height: '44px', minWidth: '44px', borderRadius: '10px', overflow: 'hidden', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -954,7 +962,7 @@ const App = () => {
             </thead>
             <tbody>
               {loading ? <tr><td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading organizers...</td></tr>
-              : filtered.length === 0 ? <tr><td colSpan={5} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No organizers found.'}</td></tr>
+              : visible.length === 0 ? <tr><td colSpan={5} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>{searchTerm ? 'No matches.' : 'No organizers found.'}</td></tr>
               : visible.map((org, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={{ padding: '14px 20px' }}>
